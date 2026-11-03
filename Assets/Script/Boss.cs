@@ -149,6 +149,7 @@ public class Boss : Enemy
     protected override void Die()
     {
         dead = true;
+        GameScore.Add(scoreValue);
         StopAllCoroutines();
         StartCoroutine(DeathSequence());
     }
