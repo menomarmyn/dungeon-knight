@@ -48,6 +48,7 @@ public class SceneFader : MonoBehaviour
             yield return null;
         }
         SetAlpha(1f);
+        Time.timeScale = 1f; // На случай перехода из паузы.
         SceneManager.LoadScene(sceneName);
     }
 

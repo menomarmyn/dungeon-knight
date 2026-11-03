@@ -26,7 +26,7 @@ public class Shooter : MonoBehaviour
     void Update()
     {
         // Держим кнопку — стреляем очередью, но не чаще cooldown.
-        if (fireAction.IsPressed())
+        if (fireAction.IsPressed() && !PauseMenu.IsPaused)
             Shoot();
     }
 

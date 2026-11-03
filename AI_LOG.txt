@@ -32,3 +32,25 @@ WHAT I DID / CHECKED MYSELF
   - ...
 
 I understand that code written with AI help is graded at most 90%, and that I must be able to explain every line.
+
+======================================================================
+WEEKS 8–9 · MOBILE GAME KICKOFF (same project, Dungeon Knight)
+======================================================================
+WHAT I ASKED THE AI TO DO
+  - Adapt the lecture templates (SafeArea, pause with Time.timeScale, Canvas Scaler settings) to my game.
+  - Write the one-page GDD from my midterm game and the weeks 9–13 plan.
+  - Explain the Git / GitHub steps (Unity .gitignore, Visible Meta Files, Force Text, branch + pull request).
+
+WHAT THE AI PRODUCED
+  - PauseMenu.cs (pause / resume / restart / menu, Time.timeScale, Esc or P on the keyboard).
+  - GameScore.cs (score between levels; crystal +100, enemy +50, boss +1000) and SCORE on the HUD and the win screen.
+  - Builder changes: score plate top-center, pause button top-right (140 × 140), pause panel (full-screen dim +
+    window inside its own SafeArea), SafeArea panels on the main menu and the win screen, all text 36 px or bigger,
+    Force Text + Visible Meta Files set from code.
+  - Pause guards in Player2D and Shooter (no input while paused).
+  - README.md, GDD PDF.
+
+WHAT I DID MYSELF
+  - Created the GitHub repository, made the commits, the feature branch and the pull request from my account.
+  - Tested the screens in Device Simulator on three devices and took the screenshots.
+  - (add anything else you changed yourself)

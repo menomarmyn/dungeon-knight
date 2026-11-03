@@ -6,6 +6,7 @@ public class Crystal : Pickup
     protected override bool Collect(GameObject player)
     {
         player.GetComponent<Player2D>().AddCrystal();
+        GameScore.Add(100);
         return true;
     }
 }

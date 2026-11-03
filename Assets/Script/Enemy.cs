@@ -7,6 +7,7 @@ public class Enemy : MonoBehaviour
 {
     public int hp = 2;
     public int contactDamage = 1;
+    public int scoreValue = 50; // Очки за победу над врагом.
     public GameObject deathFx;
     public AudioClip hitClip;
     public AudioClip dieClip;
@@ -44,6 +45,7 @@ public class Enemy : MonoBehaviour
     protected virtual void Die()
     {
         dead = true;
+        GameScore.Add(scoreValue);
         if (deathFx != null)
             Instantiate(deathFx, transform.position, Quaternion.identity);
         GameAudio.Play(dieClip);

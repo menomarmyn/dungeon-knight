@@ -13,6 +13,7 @@ public class HUD : MonoBehaviour
     public Sprite heartEmpty;
     public GameObject crystalGroup;
     public TextMeshProUGUI crystalText;
+    public TextMeshProUGUI scoreText;
     public TextMeshProUGUI messageText;
     public TextMeshProUGUI titleText;
     public GameObject bossGroup;
@@ -35,7 +36,15 @@ public class HUD : MonoBehaviour
 
     void Start()
     {
+        GameScore.MarkLevelStart();
+        SetScore(GameScore.Score);
         StartCoroutine(ShowTitle());
+    }
+
+    public void SetScore(int score)
+    {
+        if (scoreText != null)
+            scoreText.text = "SCORE " + score;
     }
 
     public void SetHearts(int hp, int maxHp)

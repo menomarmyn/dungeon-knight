@@ -78,6 +78,9 @@ public class Player2D : MonoBehaviour
 
     void Update()
     {
+        if (PauseMenu.IsPaused)
+            return; // На паузе не читаем управление.
+
         float x = moveAction.ReadValue<Vector2>().x;
 
         // Запоминаем момент нажатия прыжка (буфер прыжка).

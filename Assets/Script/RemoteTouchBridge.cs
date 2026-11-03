@@ -22,7 +22,8 @@ public class RemoteTouchBridge : MonoBehaviour
 
     void Update()
     {
-        if (Input.touchCount == 0)
+        // Только когда подключён Unity Remote. В Device Simulator касания и так приходят в Input System.
+        if (!UnityEditor.EditorApplication.isRemoteConnected || Input.touchCount == 0)
             return;
 
         if (screen == null)
