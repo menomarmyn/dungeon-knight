@@ -30,6 +30,6 @@ All canvases: Canvas Scaler *Scale With Screen Size*, 1920 × 1080, Match = 1; H
 - `Assets/Midterm/Art`, `Audio`, `Fonts` — original pixel art, chiptune sounds, Press Start 2P font (OFL)
 - `Assets/Midterm/Levels` — level layouts as text maps
 - `Assets/Midterm/Editor/MidtermBuilder.cs` — editor tool that builds the scenes
-
+- `GDD/Dungeon_Knight_GDD.pdf` — game design document
 
 Assets and licenses: see `README.txt`. AI use: see `AI_LOG.txt`.
