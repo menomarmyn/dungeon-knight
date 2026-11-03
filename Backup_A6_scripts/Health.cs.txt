@@ -1,0 +1,78 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using TMPro;
+
+// Здоровье героя, временная защита и перезапуск уровня.
+public class Health : MonoBehaviour
+{
+    public int hp = 3;
+    public int maxHp = 3;
+    public TextMeshProUGUI hpText;
+    public AudioClip hurtClip;
+    public AudioClip healClip;
+
+    private bool invincible;
+    private SpriteRenderer sr;
+    private AudioSource src;
+
+    void Awake()
+    {
+        sr = GetComponent<SpriteRenderer>();
+        src = GetComponent<AudioSource>();
+    }
+
+    void Start()
+    {
+        ShowHp();
+    }
+
+    public void TakeDamage(int dmg)
+    {
+        if (invincible)
+            return; // Во время защиты урон не проходит.
+
+        hp -= dmg;
+        Debug.Log("HP: " + hp);
+        ShowHp();
+        src.PlayOneShot(hurtClip);
+        StartCoroutine(Invincibility());
+
+        if (hp <= 0)
+            GameOver();
+    }
+
+    public void Heal(int amount)
+    {
+        hp = Mathf.Min(hp + amount, maxHp);
+        Debug.Log("HP: " + hp);
+        ShowHp();
+        src.PlayOneShot(healClip);
+    }
+
+    // Корутина ждёт, не останавливая игру.
+    IEnumerator Invincibility()
+    {
+        invincible = true;
+        for (int i = 0; i < 10; i++) // 10 переключений по 0,2 секунды.
+        {
+            sr.enabled = !sr.enabled; // Включаем и выключаем спрайт для мигания.
+            yield return new WaitForSeconds(0.2f); // Ждём, пока игра продолжается.
+        }
+        sr.enabled = true;
+        invincible = false;
+    }
+
+    public void GameOver()
+    { 
+        Debug.Log("Game over");
+        // Загружаем текущую сцену заново.
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    void ShowHp()
+    {
+        if (hpText != null)
+            hpText.text = "Жизни: " + hp + " / " + maxHp;
+    }
+}

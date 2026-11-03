@@ -1,0 +1,34 @@
+AI LOG — Midterm Project "Dungeon Knight"
+Tool: Claude (Anthropic), used as a coding assistant.
+
+WHAT I ASKED THE AI TO DO
+  - Turn my A4–A7 project (Player2D, Health, Shooter, Bullet, Hazard, Spawner, CameraFollow2D) into a full
+    5-screen mobile platformer in a Soul Knight-like pixel style.
+  - Generate pixel-art sprites, sounds and music (procedurally, so there are no license problems).
+  - Write an editor script (Midterm -> Build Everything) that creates scenes, prefabs, animators and the HUD.
+
+WHAT THE AI PRODUCED
+  - Editor tool: Assets/Midterm/Editor/MidtermBuilder.cs (scene/prefab/animator generation — not game logic).
+  - Updated my scripts: Player2D (Input System, ground check, coyote time, moving platforms),
+    Health (hearts HUD, knockback, death -> restart), Shooter (Fire action), Bullet (now inherits Projectile),
+    Hazard (breaks on the ground), CameraFollow2D (level bounds, shake).
+  - New scripts: Projectile, EnemyProjectile, Enemy, SlimeEnemy, BatEnemy, Boss, Pickup, Crystal, HeartPickup,
+    Spikes, ExitPortal, MovingPlatform, HUD, GameAudio, SceneFader, MenuButtons, SafeArea, Parallax,
+    AutoDestroy, PressFeedback, FloatingDust.
+  - Art, audio and level text maps.
+
+PROBLEMS WE HIT AND HOW THEY WERE FIXED
+  1. Compile error CS0826 (implicitly-typed Color/Color32 array) in the builder -> explicit Color[] array.
+  2. Deprecated FindObjectsByType(FindObjectsSortMode) warning -> the overload without the sort mode.
+  3. The hero fell through the floor and the level restarted in a loop: the CompositeCollider2D of the tilemap
+     was saved empty because tiles were placed from an editor script.
+     Fix: TilemapCollider2D.ProcessTilemapChanges() + CompositeCollider2D.GenerateGeometry() after placing tiles.
+  4. The on-screen joystick creates a virtual gamepad; to be sure PlayerInput receives it, Player2D pairs
+     all devices with the player (InputUser.PerformPairingWithDevice).
+
+WHAT I DID / CHECKED MYSELF
+  (fill in honestly before submitting)
+  - ...
+  - ...
+
+I understand that code written with AI help is graded at most 90%, and that I must be able to explain every line.

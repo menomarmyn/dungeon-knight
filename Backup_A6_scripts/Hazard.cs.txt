@@ -1,0 +1,38 @@
+using UnityEngine;
+
+// Базовый класс объектов, падающих сверху.
+public class Hazard : MonoBehaviour
+{
+    public float lifetime = 8f;
+
+    protected virtual void Start()
+    {
+        Destroy(gameObject, lifetime); // Объект исчезает после заданного времени.
+    }
+
+    void Update()
+    {
+        if (transform.position.y < -10f)
+            Destroy(gameObject); // Удаляем объект, упавший за уровень.
+    }
+
+    void OnCollisionEnter2D(Collision2D c)
+    {
+        if (!c.gameObject.CompareTag("Player"))
+            return;
+        OnHitPlayer(c.gameObject.GetComponent<Health>());
+        Destroy(gameObject);
+    }
+
+    // Дочерний класс может изменить реакцию на касание героя.
+    protected virtual void OnHitPlayer(Health player)
+    {
+        player.TakeDamage(1);
+    }
+
+    // Реакция на попадание пули.
+    public virtual void OnShot()
+    {
+        Destroy(gameObject);
+    }
+}

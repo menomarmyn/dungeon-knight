@@ -1,0 +1,151 @@
+using UnityEngine;
+using TMPro;
+
+public class Player2D : MonoBehaviour
+{
+    public float speed = 7f;
+    public float jumpForce = 12f;
+    public TextMeshProUGUI coinText;
+    public TextMeshProUGUI messageText;
+    public AudioClip coinSound;
+    public Animator exitGate;          // Аниматор ворот.
+    public ParticleSystem coinBurst;   // Эффект при сборе монеты.
+
+    private Rigidbody2D rb;
+    private Animator anim;
+    private SpriteRenderer sr;
+    private AudioSource audioSource;
+    private Health health;
+    private bool onGround; 
+    private Collider2D standingOn;
+    private int coins;
+    private int coinsTotal;
+
+    void Awake()
+    {
+        rb = GetComponent<Rigidbody2D>();
+        anim = GetComponent<Animator>();
+        sr = GetComponent<SpriteRenderer>();
+        audioSource = GetComponent<AudioSource>();
+        health = GetComponent<Health>();
+    }
+
+    void Start()
+    {
+        // Считаем монеты на уровне.
+        coinsTotal = GameObject.FindGameObjectsWithTag("Coin").Length;
+        Debug.Log("Coins in this level: " + coinsTotal);
+        UpdateCoinText();
+        ShowMessage("");
+    }
+
+    void Update()
+    {
+        float x = Input.GetAxisRaw("Horizontal");
+
+        // Проверяем нажатие прыжка в Update.
+        if (Input.GetKeyDown(KeyCode.Space) && onGround)
+        {
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            onGround = false;
+        }
+
+        // Передаём параметры аниматору.
+        anim.SetFloat("Speed", Mathf.Abs(rb.linearVelocity.x));
+        anim.SetBool("Grounded", onGround);
+
+        // Поворачиваем героя по направлению движения.
+        if (x > 0f)
+            sr.flipX = false;
+        else if (x < 0f)
+            sr.flipX = true;
+
+        // Перезапускаем уровень, если герой упал за его границы.
+        if (transform.position.y < -10f)
+            health.GameOver();
+    }
+
+    void FixedUpdate()
+    {
+        // Двигаем героя в физическом цикле.
+        float x = Input.GetAxisRaw("Horizontal");
+        rb.linearVelocity = new Vector2(x * speed, rb.linearVelocity.y);
+    }
+
+    // Обрабатываем объекты с триггер-коллайдером.
+    void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Coin"))
+        {
+            if (coinBurst != null)
+            {
+                coinBurst.transform.position = other.transform.position;
+                coinBurst.Play();
+            }
+
+            Destroy(other.gameObject);
+            coins++;
+            Debug.Log("Coins: " + coins + " / " + coinsTotal);
+            UpdateCoinText();
+
+            if (audioSource != null && coinSound != null)
+                audioSource.PlayOneShot(coinSound);
+        }
+
+        // Проверяем, открыты ли ворота.
+        if (other.CompareTag("Exit"))
+        {
+            if (exitGate.GetBool("Open"))
+            {
+                Debug.Log("You win!");
+                ShowMessage("Победа!");
+            }
+            else
+            {
+                Debug.Log("The gate is closed - survive first");
+                ShowMessage("Ворота закрыты — продержись 60 секунд!");
+            }
+        }
+    }
+
+    // Обрабатываем столкновения с объектами.
+    void OnCollisionEnter2D(Collision2D other)
+    {
+        // Считаем поверхность землёй, если герой приземлился сверху.
+        if (other.gameObject.CompareTag("Ground") && other.GetContact(0).normal.y > 0.5f)
+        {
+            onGround = true;
+            standingOn = other.collider;
+        }
+
+        // Враг наносит урон и отбрасывает героя вверх.
+        if (other.gameObject.CompareTag("Enemy"))
+        {
+            health.TakeDamage(1);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, 9f);
+            onGround = false;
+        }
+    }
+
+    // Если герой сошёл с опоры, он снова в воздухе.
+    void OnCollisionExit2D(Collision2D other)
+    {
+        if (other.collider == standingOn)
+        {
+            onGround = false;
+            standingOn = null;
+        }
+    }
+
+    void UpdateCoinText()
+    {
+        if (coinText != null)
+            coinText.text = "Монеты: " + coins + " / " + coinsTotal;
+    }
+
+    void ShowMessage(string text)
+    {
+        if (messageText != null)
+            messageText.text = text;
+    }
+}

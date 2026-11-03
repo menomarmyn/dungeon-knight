@@ -1,0 +1,39 @@
+using UnityEngine;
+
+// Создаёт пули с заданной задержкой между выстрелами.
+public class Shooter : MonoBehaviour
+{
+    public GameObject bulletPrefab; // Укажите префаб пули.
+    public float cooldown = 0.3f;
+    public AudioClip shootClip;
+
+    private float nextShot; // Время следующего доступного выстрела.
+    private SpriteRenderer sr;
+    private AudioSource src;
+
+    void Awake()
+    {
+        sr = GetComponent<SpriteRenderer>();
+        src = GetComponent<AudioSource>();
+    }
+
+    void Update()
+    {
+        if (Input.GetKey(KeyCode.X))
+            Shoot();
+    }
+
+    public void Shoot()
+    {
+        if (Time.time < nextShot)
+            return; // Выстрел пока недоступен.
+        nextShot = Time.time + cooldown;
+
+        // При взгляде влево разворачиваем пулю.
+        Quaternion turn = sr.flipX ? Quaternion.Euler(0f, 0f, 180f) : Quaternion.identity;
+        Vector3 muzzle = transform.position + new Vector3(sr.flipX ? -0.6f : 0.6f, 0.55f, 0f);
+
+        Instantiate(bulletPrefab, muzzle, turn);
+        src.PlayOneShot(shootClip);
+    }
+}

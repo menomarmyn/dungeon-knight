@@ -1,0 +1,21 @@
+using UnityEngine;
+
+public class CameraFollow2D : MonoBehaviour
+{
+    public Transform target;
+    public Vector2 offset = new Vector2(0f, 2f);
+    public float smooth = 5f;
+
+    // Ограничиваем камеру границами уровня.
+    public float minX = -1.8f;
+    public float maxX = 23.8f;
+    public float minY = 2f;
+
+    void LateUpdate()
+    {
+        float x = Mathf.Clamp(target.position.x + offset.x, minX, maxX);
+        float y = Mathf.Max(target.position.y + offset.y, minY);
+        Vector3 wanted = new Vector3(x, y, transform.position.z);
+        transform.position = Vector3.Lerp(transform.position, wanted, smooth * Time.deltaTime);
+    }
+}
