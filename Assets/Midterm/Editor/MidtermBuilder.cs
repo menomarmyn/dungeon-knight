@@ -38,7 +38,7 @@ public static class MidtermBuilder
     // Сколько кадров в каждом спрайт-листе (полоса кадров слева направо).
     static readonly Dictionary<string, int> Sheets = new Dictionary<string, int>
     {
-        { "Hero_Idle", 4 }, { "Hero_Run", 6 }, { "Hero_Jump", 2 }, { "Slime_Walk", 4 }, { "Bat_Fly", 4 },
+        { "Hero_Idle", 4 }, { "Hero_Run", 6 }, { "Hero_Jump", 2 }, { "Slime_Walk", 4 }, { "Bat_Fly", 4 }, { "Goblin_Idle", 2 },
         { "Boss_Idle", 4 }, { "Boss_Attack", 2 }, { "Crystal_Spin", 6 }, { "Portal_Open", 6 }, { "Torch", 4 },
         { "Poof", 5 }, { "HitSpark", 3 },
     };
@@ -55,7 +55,7 @@ public static class MidtermBuilder
     static Color bgColor = new Color32(14, 11, 22, 255);
 
     // Префабы
-    static GameObject pPlayer, pBullet, pOrb, pFireball, pWarning, pRock, pCrystal, pHeart, pSlime, pBat, pBoss,
+    static GameObject pPlayer, pBullet, pOrb, pFireball, pWarning, pRock, pCrystal, pHeart, pSlime, pBat, pBoss, pGoblin, pArrow,
         pSpikes, pPortal, pTorch, pPlatform, pPoof, pSpark, pHUD, pSystems;
     static Tile[] tTop, tInner;
     static Tile tLedge;
@@ -401,6 +401,17 @@ public static class MidtermBuilder
         // --- simple looping
         Ctrls["Slime"] = SimpleController("Slime", SpriteClip("Slime_Walk", Frames("Enemies/Slime_Walk"), 6, true));
         Ctrls["Bat"] = SimpleController("Bat", SpriteClip("Bat_Fly", Frames("Enemies/Bat_Fly"), 10, true));
+
+        // --- Goblin archer: Idle <-> Aim (bool Aiming)
+        var gc = AnimatorController.CreateAnimatorControllerAtPath(Gen + "/Anim/Goblin.controller");
+        gc.AddParameter("Aiming", AnimatorControllerParameterType.Bool);
+        var gsm = gc.layers[0].stateMachine;
+        var sgIdle = gsm.AddState("Idle"); sgIdle.motion = SpriteClip("Goblin_Idle", Frames("Enemies/Goblin_Idle"), 3, true);
+        var sgAim = gsm.AddState("Aim"); sgAim.motion = SpriteClip("Goblin_Aim", new[] { Spr("Enemies/Goblin_Aim") }, 1, true);
+        gsm.defaultState = sgIdle;
+        Trans(sgIdle, sgAim).AddCondition(AnimatorConditionMode.If, 0, "Aiming");
+        Trans(sgAim, sgIdle).AddCondition(AnimatorConditionMode.IfNot, 0, "Aiming");
+        Ctrls["Goblin"] = gc;
         Ctrls["Crystal"] = SimpleController("Crystal", SpriteClip("Crystal_Spin", Frames("Pickups/Crystal_Spin"), 10, true));
         Ctrls["Torch"] = SimpleController("Torch", SpriteClip("Torch_Burn", Frames("Background/Torch"), 8, true));
         Ctrls["Poof"] = SimpleController("Poof", SpriteClip("Poof", Frames("FX/Poof"), 14, false));
@@ -545,13 +556,32 @@ public static class MidtermBuilder
         // --- враги (наследники Enemy)
         g = Go("Slime"); g.tag = "Enemy"; AddSR(g, Frames("Enemies/Slime_Walk")[0], 5); AddAnim(g, Ctrls["Slime"]); AddRB(g, RigidbodyType2D.Kinematic);
         bc = g.AddComponent<BoxCollider2D>(); bc.isTrigger = true; bc.size = new Vector2(0.9f, 0.65f); bc.offset = new Vector2(0, -0.1f);
-        var sl = g.AddComponent<SlimeEnemy>(); sl.hp = 2; sl.speed = 2f; sl.deathFx = pPoof; sl.hitClip = Sfx("sfx_hit"); sl.dieClip = Sfx("sfx_enemy_die");
+        var sl = g.AddComponent<SlimeEnemy>(); sl.hp = 2; sl.deathFx = pPoof; sl.hitClip = Sfx("sfx_hit"); sl.dieClip = Sfx("sfx_enemy_die");
+        sl.viewDistance = 6f; sl.viewAngle = 120f; sl.eyeOffset = new Vector2(0, 0.1f); SetupEnemyAI(sl, g, 0.85f);
         pSlime = SavePrefab(g, "Slime");
 
         g = Go("Bat"); g.tag = "Enemy"; AddSR(g, Frames("Enemies/Bat_Fly")[0], 5); AddAnim(g, Ctrls["Bat"]); AddRB(g, RigidbodyType2D.Kinematic);
         bc = g.AddComponent<BoxCollider2D>(); bc.isTrigger = true; bc.size = new Vector2(0.8f, 0.5f);
         var bt = g.AddComponent<BatEnemy>(); bt.hp = 1; bt.deathFx = pPoof; bt.hitClip = Sfx("sfx_hit"); bt.dieClip = Sfx("sfx_enemy_die");
+        bt.viewDistance = 6.5f; bt.viewAngle = 360f; bt.eyeOffset = Vector2.zero; SetupEnemyAI(bt, g, 0.8f);
         pBat = SavePrefab(g, "Bat");
+
+        // --- стрела лучника (наследник Projectile)
+        g = Go("Arrow"); AddSR(g, Spr("FX/Arrow"), 13); AddRB(g, RigidbodyType2D.Dynamic);
+        var acol = g.AddComponent<BoxCollider2D>(); acol.isTrigger = true; acol.size = new Vector2(0.7f, 0.2f);
+        ep = g.AddComponent<EnemyProjectile>(); ep.speed = 10f; ep.lifetime = 3f; ep.hitFx = pSpark;
+        pArrow = SavePrefab(g, "Arrow");
+
+        // --- SHOOTER: гоблин-лучник
+        g = Go("GoblinArcher"); g.tag = "Enemy"; AddSR(g, Frames("Enemies/Goblin_Idle")[0], 5); AddAnim(g, Ctrls["Goblin"]); AddRB(g, RigidbodyType2D.Kinematic);
+        bc = g.AddComponent<BoxCollider2D>(); bc.isTrigger = true; bc.size = new Vector2(0.75f, 1.1f); bc.offset = new Vector2(0, -0.05f);
+        var gob = g.AddComponent<GoblinArcher>(); gob.hp = 2; gob.scoreValue = 75; gob.deathFx = pPoof; gob.hitClip = Sfx("sfx_hit"); gob.dieClip = Sfx("sfx_enemy_die");
+        gob.viewDistance = 9f; gob.viewAngle = 140f; gob.eyeOffset = new Vector2(0, 0.25f);
+        gob.arrowPrefab = pArrow.GetComponent<EnemyProjectile>(); gob.shootClip = Sfx("sfx_shoot");
+        var line = Go("AimLine", g.transform); var lsr = AddSR(line, Spr("FX/WhitePixel"), 8, new Color(1f, 0.15f, 0.2f, 0.8f));
+        gob.aimLine = lsr; gob.pixelUnits = 0.25f;
+        SetupEnemyAI(gob, g, 1.05f);
+        pGoblin = SavePrefab(g, "GoblinArcher");
 
         g = Go("SlimeKing"); g.tag = "Enemy"; AddSR(g, Frames("Boss/Boss_Idle")[0], 6); AddAnim(g, cBossCtrl); AddRB(g, RigidbodyType2D.Kinematic);
         var bcap = g.AddComponent<CapsuleCollider2D>(); bcap.isTrigger = true; bcap.direction = CapsuleDirection2D.Horizontal;
@@ -607,6 +637,16 @@ public static class MidtermBuilder
 
         pHUD = MakeHUD();
         pSystems = MakeSystems();
+    }
+
+    // Общие настройки ИИ врага: слой стен для Raycast, значок «!», звук замаха.
+    static void SetupEnemyAI(Enemy e, GameObject g, float alertY)
+    {
+        e.wallMask = 1 << groundLayer;
+        e.windUpClip = Sfx("sfx_warning");
+        var alert = Go("Alert", g.transform); AddSR(alert, Spr("FX/Warning"), 9);
+        alert.transform.localPosition = new Vector3(0, alertY, 0); alert.transform.localScale = Vector3.one * 0.6f;
+        e.alertIcon = alert;
     }
 
     // ------------------------------------------------------------------ UI HELPERS
@@ -991,7 +1031,8 @@ public static class MidtermBuilder
                         while (Free(l - 1, y) && At(l - 1, y) != '^' && !Free(l - 1, y - 1)) l--;
                         while (Free(r + 1, y) && At(r + 1, y) != '^' && !Free(r + 1, y - 1)) r++;
                         var s = Place(pSlime, new Vector3(x + 0.5f, y + 0.44f, 0), actors).GetComponent<SlimeEnemy>();
-                        s.leftX = l + 0.5f; s.rightX = r + 0.5f;
+                        float sy = y + 0.44f; // маршрут патруля: края платформы
+                        s.waypoints = new[] { new Vector2(l + 0.5f, sy), new Vector2(r + 0.5f, sy) };
                         break;
                     }
                     case 'b':
@@ -1000,7 +1041,7 @@ public static class MidtermBuilder
                         while (l > x - 5 && Free(l - 1, y) && Free(l - 1, y + 1) && Free(l - 1, y - 1)) l--;
                         while (r < x + 5 && Free(r + 1, y) && Free(r + 1, y + 1) && Free(r + 1, y - 1)) r++;
                         var b = Place(pBat, cell, actors).GetComponent<BatEnemy>();
-                        b.leftX = l + 0.5f; b.rightX = r + 0.5f;
+                        b.waypoints = new[] { new Vector2(l + 0.5f, y + 0.5f), new Vector2(r + 0.5f, y + 0.5f) };
                         break;
                     }
                     case 'M':
@@ -1017,6 +1058,12 @@ public static class MidtermBuilder
                         sp.transform.position = cell;
                         sp.prefabs = new Hazard[] { pRock.GetComponent<Hazard>() };
                         sp.firstDelay = 0.5f; sp.interval = 1.1f; sp.halfWidth = 3.5f;
+                        break;
+                    }
+                    case 'a':
+                    {
+                        var gob = Place(pGoblin, new Vector3(x + 0.5f, y + 0.62f, 0), actors).GetComponent<GoblinArcher>();
+                        gob.startFacingRight = false; // смотрит навстречу игроку, который идёт слева
                         break;
                     }
                     case 'B': hasBoss = true; bossPos = cell; break;
@@ -1093,7 +1140,7 @@ public static class MidtermBuilder
 
         var kingGo = Go("SlimeKing"); AddSR(kingGo, Frames("Boss/Boss_Idle")[0], 6); AddAnim(kingGo, cBossCtrl);
         kingGo.transform.position = new Vector3(8f, 3.65f, 0); kingGo.GetComponent<SpriteRenderer>().flipX = false;
-        var s = Place(pSlime, new Vector3(2f, 2.44f, 0)).GetComponent<SlimeEnemy>(); s.leftX = -1f; s.rightX = 4f;
+        var s = Place(pSlime, new Vector3(2f, 2.44f, 0)).GetComponent<SlimeEnemy>(); s.waypoints = new[] { new Vector2(-1f, 2.44f), new Vector2(4f, 2.44f) };
         Place(pCrystal, new Vector3(-9.5f, 4f, 0)); Place(pCrystal, new Vector3(-3.5f, 4.6f, 0));
 
         var cv = Go("MenuCanvas"); MakeCanvas(cv, 5); cv.AddComponent<GraphicRaycaster>();
