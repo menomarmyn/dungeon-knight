@@ -27,9 +27,13 @@ PROBLEMS WE HIT AND HOW THEY WERE FIXED
      all devices with the player (InputUser.PerformPairingWithDevice).
 
 WHAT I DID / CHECKED MYSELF
-  (fill in honestly before submitting)
-  - ...
-  - ...
+  - Chose the concept: 2D pixel action platformer in the Soul Knight style, 5 screens, boss at the end.
+  - Decided to keep my A4–A7 logic and physics and asked mainly for visual changes, so my old scripts stayed the base.
+  - Ran Build Everything in Unity 6.6 and played every level in the Editor; reported the bugs I found
+    (hero falling through the floor, title cut off on the tablet, hero hidden under the joystick at spawn).
+  - Tested on my iPhone with Unity Remote 5: the picture was blurry, then the game lagged and the touch
+    controls did not work; I reported each problem and checked the fix again on the phone.
+  - Recorded and presented the defense video myself.
 
 I understand that code written with AI help is graded at most 90%, and that I must be able to explain every line.
 
@@ -53,4 +57,19 @@ WHAT THE AI PRODUCED
 WHAT I DID MYSELF
   - Created the GitHub repository, made the commits, the feature branch and the pull request from my account.
   - Tested the screens in Device Simulator on three devices and took the screenshots.
-  - (add anything else you changed yourself)
+  - Set up GitHub Desktop myself; fixed my first mistake (the repo was created in a new empty folder
+    instead of the project folder) by recreating it inside hw6 with the Unity .gitignore.
+  - Checked the Safe Area and the pause panel on a notch iPhone, a 16:9 phone and a 4:3 tablet.
+
+======================================================================
+WEEK 10 · THREE ENEMY TYPES
+======================================================================
+See DECISIONS.md for the week-by-week decision log (required by the assignment).
+AI produced: Enemy.cs (shared sight + telegraph), SlimeEnemy.cs (Patroller FSM), GoblinArcher.cs (Shooter FSM),
+BatEnemy.cs (Charger FSM), goblin and arrow sprites, builder changes (prefabs, waypoints, archers in levels),
+the script map image.
+WHAT I DID MYSELF
+  - Rebuilt the game in Unity (Midterm -> Build Everything) and checked that the new scripts compile.
+  - Reviewed the changes and split them into separate commits (enemy scripts / prefabs and levels / docs)
+    in GitHub Desktop from my account, then pushed.
+  - Playtest and tuning: see DECISIONS.md (tester tries and the numbers I changed, old -> new).
