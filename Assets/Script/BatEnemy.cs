@@ -13,7 +13,7 @@ public class BatEnemy : Enemy
     public float waveHeight = 0.4f;        // Покачивание вверх-вниз.
 
     [Header("Dash")]
-    public float windUp = 0.7f;            // Замах перед тараном.
+    public float windUp = 0.6f;            // Замах перед тараном.
     public float dashSpeed = 11f;
     public float dashTime = 0.45f;
     public float recoverTime = 1.4f;       // Отдых после тарана (кулдаун).

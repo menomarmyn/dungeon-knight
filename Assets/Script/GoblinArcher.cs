@@ -14,7 +14,7 @@ public class GoblinArcher : Enemy
     [Header("Aim & Shoot")]
     public float aimTime = 0.6f;           // Замах: прицел виден, можно уйти с линии.
     public float lockTime = 0.2f;          // Последние доли секунды прицел больше не следит за игроком.
-    public float cooldown = 1.6f;          // Перезарядка — окно для атаки игрока.
+    public float cooldown = 2.0f;          // Перезарядка — окно для атаки игрока.
     public EnemyProjectile arrowPrefab;
     public AudioClip shootClip;
     public Vector2 bowOffset = new Vector2(0.45f, 0.1f);

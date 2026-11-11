@@ -11,8 +11,4 @@ Decision log: what I asked the AI agent (Claude), what it got wrong, what I chan
 2026-11-11  Archer aim line follows the player and freezes for the last 0.2 s, so the player can step out of the line. Bat locks its dash direction at the end of the wind-up for the same reason.
 2026-11-11  Level 2 end = arena with all three types together (slime on the ground, bat in the air, archer on the ledge). One archer added near the end of Level 1 with the sign "RED LINE = ARROW!".
 
-<!-- Add your own lines below: what went wrong when you tested, and the playtest. Examples:
-2026-11-__  Tested in Unity: ... was wrong / too hard → changed ...
-2026-11-__  Playtest on iPhone: TESTER 1 __ tries, TESTER 2 __ tries (Level 2).
-2026-11-__  Changed after playtest: GoblinArcher.cooldown 1.6 s → __ s, BatEnemy.windUp 0.7 s → __ s. Now __ tries.
--->
+2026-11-11  Changed after playtest: GoblinArcher.cooldown 1.6 -> 2.0 (arrows too often), BatEnemy.windUp 0.7 -> 0.6 (bat too easy)
