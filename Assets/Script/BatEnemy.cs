@@ -9,15 +9,9 @@ public class BatEnemy : Enemy
 
     [Header("Patrol (waypoints)")]
     public Vector2[] waypoints;
-    public float patrolSpeed = 2.2f;
-    public float waveHeight = 0.4f;        // Покачивание вверх-вниз.
 
-    [Header("Dash")]
-    public float windUp = 0.6f;            // Замах перед тараном.
-    public float dashSpeed = 11f;
-    public float dashTime = 0.45f;
-    public float recoverTime = 1.4f;       // Отдых после тарана (кулдаун).
-    public float returnSpeed = 2.5f;
+    // Скорости, замах, таран и отдых — в ассете Bat.asset.
+    BatStats S => (BatStats)stats;
 
     [Header("Debug")]
     public State state = State.Patrol;
@@ -40,7 +34,7 @@ public class BatEnemy : Enemy
                 if (OnScreen() && CanSeePlayer(Vector2.right))
                 {
                     state = State.WindUp;
-                    timer = windUp;
+                    timer = S.windUp;
                     windUpPos = rb.position;
                     BeginWindUp();
                 }
@@ -57,18 +51,18 @@ public class BatEnemy : Enemy
                     EndWindUp();
                     dashDir = (PlayerCenter - rb.position).normalized; // Направление фиксируем в конце замаха.
                     state = State.Dash;
-                    timer = dashTime;
+                    timer = S.dashTime;
                 }
                 break;
 
             case State.Dash:
                 timer -= Time.fixedDeltaTime;
-                float step = dashSpeed * Time.fixedDeltaTime;
+                float step = S.dashSpeed * Time.fixedDeltaTime;
                 bool wall = Physics2D.Raycast(rb.position, dashDir, step + 0.35f, wallMask).collider != null;
                 if (wall || timer <= 0f)
                 {
                     state = State.Recover;
-                    timer = recoverTime;
+                    timer = S.recoverTime;
                     break;
                 }
                 rb.MovePosition(rb.position + dashDir * step);
@@ -78,7 +72,7 @@ public class BatEnemy : Enemy
                 timer -= Time.fixedDeltaTime;
                 // Медленно возвращается к маршруту.
                 Vector2 home = waypoints != null && waypoints.Length > 0 ? waypoints[waypoint] : rb.position;
-                rb.MovePosition(Vector2.MoveTowards(rb.position, home, returnSpeed * Time.fixedDeltaTime));
+                rb.MovePosition(Vector2.MoveTowards(rb.position, home, S.returnSpeed * Time.fixedDeltaTime));
                 if (timer <= 0f)
                     state = State.Patrol;
                 break;
@@ -90,8 +84,8 @@ public class BatEnemy : Enemy
         if (waypoints == null || waypoints.Length == 0)
             return;
         Vector2 target = waypoints[waypoint];
-        Vector2 next = Vector2.MoveTowards(rb.position, target, patrolSpeed * Time.fixedDeltaTime);
-        next.y += Mathf.Sin(Time.time * 3f) * waveHeight * Time.fixedDeltaTime * 3f;
+        Vector2 next = Vector2.MoveTowards(rb.position, target, S.patrolSpeed * Time.fixedDeltaTime);
+        next.y += Mathf.Sin(Time.time * 3f) * S.waveHeight * Time.fixedDeltaTime * 3f;
         rb.MovePosition(next);
         sr.flipX = target.x < rb.position.x;
         if (Vector2.Distance(rb.position, target) < 0.2f)

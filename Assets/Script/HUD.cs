@@ -16,6 +16,7 @@ public class HUD : MonoBehaviour
     public TextMeshProUGUI scoreText;
     public TextMeshProUGUI messageText;
     public TextMeshProUGUI titleText;
+    public TextMeshProUGUI timerText;   // Лимит времени уровня (LevelData.timeLimit).
     public GameObject bossGroup;
     public RectTransform bossFill;
     public string levelTitle = "LEVEL 1";
@@ -54,6 +55,15 @@ public class HUD : MonoBehaviour
             hearts[i].gameObject.SetActive(i < maxHp);
             hearts[i].sprite = i < hp ? heartFull : heartEmpty;
         }
+    }
+
+    // Пустая строка — таймер скрыт (уровень без лимита).
+    public void SetTimer(string text, bool hurry = false)
+    {
+        if (timerText == null)
+            return;
+        timerText.text = text.Length > 0 ? "TIME " + text : "";
+        timerText.color = hurry ? new Color(1f, 0.45f, 0.45f) : Color.white;
     }
 
     public void SetCrystals(int have, int need)

@@ -74,11 +74,17 @@ public class MusicManager : MonoBehaviour
         AudioPrefs.ApplyAll();
     }
 
-    // Телефон: приложение свернули или закрыли — громкость уже записана на диск.
+    // Телефон: приложение свернули (или сейчас закроют) — пишем save.json.
+    // MusicManager живёт во всех сценах (DontDestroyOnLoad), поэтому сохранение здесь срабатывает всегда.
     void OnApplicationPause(bool paused)
     {
         if (paused)
-            AudioPrefs.Save();
+            SaveSystem.Save();
+    }
+
+    void OnApplicationQuit()
+    {
+        SaveSystem.Save();
     }
 
     AudioSource MakeSource()

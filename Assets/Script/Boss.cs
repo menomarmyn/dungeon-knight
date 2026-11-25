@@ -3,7 +3,8 @@ using UnityEngine;
 
 // Босс «Король слизней». Наследуется от Enemy.
 // Цикл: перелёт -> веер сфер -> пауза -> огненный дождь с предупреждением -> пауза.
-// Ниже половины HP — вторая фаза: атакует чаще, веер шире, колонн огня больше.
+// Ниже phase2At HP — вторая фаза: атакует чаще, веер шире, колонн огня больше.
+// Все числа атак — в ассете SlimeKing.asset (BossStats).
 public class Boss : Enemy
 {
     [Header("Attacks")]
@@ -19,19 +20,19 @@ public class Boss : Enemy
     public float arenaRight = 34f;
     public float floorY = 2f;
     public float ceilingY = 14f;
-    public string winScene = "Win";
 
     private int maxHp;
     private Transform hero; // Своё имя: в базовом Enemy уже есть приватное поле player.
     private Animator anim;
 
-    bool Phase2 => hp <= maxHp / 2;
+    BossStats S => (BossStats)stats;
+    bool Phase2 => hp <= maxHp * S.phase2At;
 
     protected override void Awake()
     {
         base.Awake();
         anim = GetComponent<Animator>();
-        maxHp = hp;
+        maxHp = stats.maxHp;
     }
 
     IEnumerator Start()
@@ -41,10 +42,10 @@ public class Boss : Enemy
             HUD.Instance.ShowBoss(hp, maxHp);
 
         // Вступление: рык и небольшая пауза, чтобы игрок осмотрелся.
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(S.introDelay);
         GameAudio.Play(roarClip);
         CameraShake.Shake(0.5f, 0.25f);
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(S.introDelay);
         StartCoroutine(Brain());
     }
 
@@ -52,26 +53,26 @@ public class Boss : Enemy
     {
         while (!dead)
         {
-            yield return MoveTo(RandomSpot(), 1.1f);
+            yield return MoveTo(RandomSpot(), S.moveTime);
             yield return FanAttack();
-            yield return new WaitForSeconds(Phase2 ? 0.7f : 1.4f); // Окно, чтобы подойти и стрелять.
+            yield return new WaitForSeconds(Phase2 ? S.pauseAfterFanPhase2 : S.pauseAfterFan); // Окно, чтобы подойти и стрелять.
 
             yield return RainAttack();
-            yield return new WaitForSeconds(Phase2 ? 0.8f : 1.6f);
+            yield return new WaitForSeconds(Phase2 ? S.pauseAfterRainPhase2 : S.pauseAfterRain);
 
             if (Phase2)
             {
-                yield return MoveTo(RandomSpot(), 0.7f);
+                yield return MoveTo(RandomSpot(), S.moveTimePhase2);
                 yield return FanAttack();
-                yield return new WaitForSeconds(0.8f);
+                yield return new WaitForSeconds(S.pauseAfterFanPhase2);
             }
         }
     }
 
     Vector2 RandomSpot()
     {
-        float x = Random.Range(arenaLeft + 6f, arenaRight - 3.5f);
-        float y = floorY + Random.Range(3.5f, 6f);
+        float x = Random.Range(arenaLeft + S.arenaMargin.x, arenaRight - S.arenaMargin.y);
+        float y = floorY + Random.Range(S.hoverHeight.x, S.hoverHeight.y);
         return new Vector2(x, y);
     }
 
@@ -93,11 +94,11 @@ public class Boss : Enemy
     {
         anim.SetTrigger("Attack");
         GameAudio.Play(windUpClip, 0.8f);         // Звук замаха: слышно до того, как полетят сферы.
-        yield return new WaitForSeconds(0.45f);   // Замах: атаку видно и слышно заранее.
+        yield return new WaitForSeconds(S.fanWindUp); // Замах: атаку видно и слышно заранее.
 
-        int count = Phase2 ? 9 : 5;
-        float spread = Phase2 ? 100f : 60f;
-        int waves = Phase2 ? 2 : 1;
+        int count = Phase2 ? S.fanCountPhase2 : S.fanCount;
+        float spread = Phase2 ? S.fanSpreadPhase2 : S.fanSpread;
+        int waves = Phase2 ? S.fanWavesPhase2 : S.fanWaves;
 
         for (int w = 0; w < waves; w++)
         {
@@ -109,14 +110,14 @@ public class Boss : Enemy
                 Instantiate(orbPrefab, transform.position, Quaternion.Euler(0f, 0f, a));
             }
             GameAudio.Play(shotClip);
-            yield return new WaitForSeconds(0.45f);
+            yield return new WaitForSeconds(S.fanWaveGap);
         }
     }
 
     // Огненный дождь: сначала красные колонны «!», потом падают шары.
     IEnumerator RainAttack()
     {
-        int columns = Phase2 ? 5 : 3;
+        int columns = Phase2 ? S.rainColumnsPhase2 : S.rainColumns;
         float[] xs = new float[columns];
         xs[0] = hero.position.x; // Одна колонна всегда над героем.
         for (int i = 1; i < columns; i++)
@@ -127,7 +128,7 @@ public class Boss : Enemy
             warnings[i] = Instantiate(warningPrefab, new Vector3(xs[i], floorY, 0f), Quaternion.identity);
         GameAudio.Play(warningClip);
 
-        yield return new WaitForSeconds(Phase2 ? 0.8f : 1.1f); // Время, чтобы уйти.
+        yield return new WaitForSeconds(Phase2 ? S.rainWarnTimePhase2 : S.rainWarnTime); // Время, чтобы уйти.
 
         for (int i = 0; i < columns; i++)
         {
@@ -150,7 +151,7 @@ public class Boss : Enemy
     protected override void Die()
     {
         dead = true;
-        GameScore.Add(scoreValue);
+        GameScore.Add(stats.scoreValue);
         StopAllCoroutines();
         StartCoroutine(DeathSequence());
     }
@@ -175,6 +176,6 @@ public class Boss : Enemy
         }
         sr.enabled = false;
         yield return new WaitForSeconds(0.8f);
-        SceneFader.Load(winScene);
+        GameSession.CompleteLevel(); // Сохраняем прогресс и рекорд, дальше — экран победы.
     }
 }

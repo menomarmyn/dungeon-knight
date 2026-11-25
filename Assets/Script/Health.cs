@@ -5,9 +5,10 @@ using UnityEngine.SceneManagement;
 // Здоровье героя, временная защита (мигание) и перезапуск уровня.
 public class Health : MonoBehaviour
 {
-    public int hp = 3;
-    public int maxHp = 3;
-    public float invincibleTime = 1.2f;
+    public PlayerStats stats;   // maxHp и время неуязвимости — из ассета Player.
+
+    public int Hp { get; private set; }
+    public int MaxHp => stats.maxHp;
     public AudioClip hurtClip;
     public AudioClip healClip;
     public AudioClip loseClip;   // Звук поражения (герой погиб).
@@ -26,6 +27,7 @@ public class Health : MonoBehaviour
 
     void Start()
     {
+        Hp = stats.maxHp;
         ShowHp();
     }
 
@@ -40,13 +42,13 @@ public class Health : MonoBehaviour
         if (invincible || dead)
             return; // Во время защиты урон не проходит.
 
-        hp -= dmg;
-        Debug.Log("Damage " + dmg + " from " + from + ", HP: " + hp);
+        Hp -= dmg;
+        Debug.Log("Damage " + dmg + " from " + from + ", HP: " + Hp);
         ShowHp();
         GameAudio.Play(hurtClip);
         CameraShake.Shake(0.15f, 0.15f);
 
-        if (hp <= 0)
+        if (Hp <= 0)
         {
             GameOver();
             return;
@@ -59,7 +61,7 @@ public class Health : MonoBehaviour
 
     public void Heal(int amount)
     {
-        hp = Mathf.Min(hp + amount, maxHp);
+        Hp = Mathf.Min(Hp + amount, MaxHp);
         ShowHp();
         GameAudio.Play(healClip);
     }
@@ -68,7 +70,7 @@ public class Health : MonoBehaviour
     IEnumerator Invincibility()
     {
         invincible = true;
-        float end = Time.time + invincibleTime;
+        float end = Time.time + stats.invincibleTime;
         while (Time.time < end)
         {
             sr.enabled = !sr.enabled; // Включаем и выключаем спрайт для мигания.
@@ -83,7 +85,7 @@ public class Health : MonoBehaviour
         if (dead)
             return;
         dead = true;
-        hp = 0;
+        Hp = 0;
         ShowHp();
         StartCoroutine(DieAndRestart());
     }
@@ -96,6 +98,7 @@ public class Health : MonoBehaviour
             Instantiate(deathFx, transform.position + Vector3.up * 0.6f, Quaternion.identity);
         sr.enabled = false;
         GameAudio.Play(loseClip, 1f, false);
+        SaveSystem.ReportScore(GameScore.Score); // Рекорд считается и для неудачной попытки.
         GameScore.ResetToLevelStart(); // Очки за неудачную попытку не сохраняются.
         yield return new WaitForSeconds(0.8f);
         // Загружаем текущую сцену заново.
@@ -105,6 +108,6 @@ public class Health : MonoBehaviour
     void ShowHp()
     {
         if (HUD.Instance != null)
-            HUD.Instance.SetHearts(hp, maxHp);
+            HUD.Instance.SetHearts(Hp, MaxHp);
     }
 }

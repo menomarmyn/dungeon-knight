@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 public class Shooter : MonoBehaviour
 {
     public Bullet bulletPrefab; // Префаб пули.
-    public float cooldown = 0.25f;
+    public PlayerStats stats;   // Перезарядка — stats.fireCooldown.
     public AudioClip shootClip;
     public Vector2 muzzleOffset = new Vector2(0.7f, 0.62f);
 
@@ -34,7 +34,7 @@ public class Shooter : MonoBehaviour
     {
         if (Time.time < nextShot)
             return; // Выстрел пока недоступен.
-        nextShot = Time.time + cooldown;
+        nextShot = Time.time + stats.fireCooldown;
 
         // При взгляде влево разворачиваем пулю.
         Quaternion turn = sr.flipX ? Quaternion.Euler(0f, 0f, 180f) : Quaternion.identity;

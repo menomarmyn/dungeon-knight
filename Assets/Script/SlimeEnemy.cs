@@ -9,19 +9,9 @@ public class SlimeEnemy : Enemy
 
     [Header("Patrol (waypoints)")]
     public Vector2[] waypoints;            // Точки маршрута (задаёт уровень).
-    public float patrolSpeed = 1.6f;
-    public float waitAtPoint = 0.6f;       // Пауза на каждой точке.
 
-    [Header("Chase")]
-    public float chaseSpeed = 2.8f;
-    public float loseSightTime = 1.5f;     // Сколько секунд помнит игрока после потери из виду.
-    public float attackRange = 1.8f;       // С этой дистанции начинает замах.
-
-    [Header("Attack")]
-    public float windUp = 0.45f;           // Замах: мигание и «!» (честное предупреждение).
-    public float lungeSpeed = 7f;
-    public float lungeTime = 0.3f;
-    public float cooldown = 1.2f;          // Пауза после атаки — окно, чтобы ударить в ответ.
+    // Все числа (скорости, замах, кулдаун) — в ассете Slime.asset.
+    SlimeStats S => (SlimeStats)stats;
 
     [Header("Debug")]
     public State state = State.Patrol;
@@ -52,19 +42,19 @@ public class SlimeEnemy : Enemy
 
             case State.Chase:
                 FacePlayer();
-                if (Time.time - lastSeen > loseSightTime)
+                if (Time.time - lastSeen > S.loseSightTime)
                 {
                     state = State.Patrol; // Потерял игрока — возвращается к маршруту.
                     break;
                 }
-                if (Mathf.Abs(Player.position.x - transform.position.x) <= attackRange && sees)
+                if (Mathf.Abs(Player.position.x - transform.position.x) <= S.attackRange && sees)
                 {
                     state = State.WindUp;
-                    timer = windUp;
+                    timer = S.windUp;
                     BeginWindUp();
                     break;
                 }
-                Move(dir * chaseSpeed);
+                Move(dir * S.chaseSpeed);
                 break;
 
             case State.WindUp:
@@ -74,23 +64,23 @@ public class SlimeEnemy : Enemy
                 {
                     EndWindUp();
                     state = State.Lunge;
-                    timer = lungeTime;
+                    timer = S.lungeTime;
                 }
                 break;
 
             case State.Lunge:
                 timer -= Time.fixedDeltaTime;
-                if (!Move(dir * lungeSpeed) || timer <= 0f)
+                if (!Move(dir * S.lungeSpeed) || timer <= 0f)
                 {
                     state = State.Cooldown;
-                    timer = cooldown;
+                    timer = S.cooldown;
                 }
                 break;
 
             case State.Cooldown:
                 timer -= Time.fixedDeltaTime;
                 if (timer <= 0f)
-                    state = Time.time - lastSeen < loseSightTime ? State.Chase : State.Patrol;
+                    state = Time.time - lastSeen < S.loseSightTime ? State.Chase : State.Patrol;
                 break;
         }
 
@@ -108,10 +98,10 @@ public class SlimeEnemy : Enemy
         }
         Vector2 target = waypoints[waypoint];
         float dx = target.x - rb.position.x;
-        if (Mathf.Abs(dx) < 0.05f || !Move(Mathf.Sign(dx) * patrolSpeed))
+        if (Mathf.Abs(dx) < 0.05f || !Move(Mathf.Sign(dx) * S.patrolSpeed))
         {
             waypoint = (waypoint + 1) % waypoints.Length; // Следующая точка по кругу.
-            timer = waitAtPoint;
+            timer = S.waitAtPoint;
         }
         else
         {

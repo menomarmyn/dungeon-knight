@@ -3,14 +3,14 @@ using UnityEngine;
 // Базовый класс объектов, падающих сверху (сталактиты из Spawner).
 public class Hazard : MonoBehaviour
 {
-    public float lifetime = 8f;
+    public ItemValues items;           // Урон и время жизни камня.
     public bool breakOnGround = true;  // Разбивается о пол.
     public GameObject breakFx;
     public AudioClip breakClip;
 
     protected virtual void Start()
     {
-        Destroy(gameObject, lifetime); // Объект исчезает после заданного времени.
+        Destroy(gameObject, items.rockLifetime); // Объект исчезает после заданного времени.
     }
 
     void Update()
@@ -42,7 +42,7 @@ public class Hazard : MonoBehaviour
     // Дочерний класс может изменить реакцию на касание героя.
     protected virtual void OnHitPlayer(Health player)
     {
-        player.TakeDamage(1, transform.position);
+        player.TakeDamage(items.rockDamage, transform.position);
     }
 
     // Реакция на попадание пули.

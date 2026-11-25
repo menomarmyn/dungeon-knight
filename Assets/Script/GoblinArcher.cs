@@ -9,13 +9,9 @@ public class GoblinArcher : Enemy
 
     [Header("Watch")]
     public bool startFacingRight = false;
-    public float turnAroundTime = 3f;      // Раз в N секунд оборачивается.
 
     [Header("Aim & Shoot")]
-    public float aimTime = 0.6f;           // Замах: прицел виден, можно уйти с линии.
-    public float lockTime = 0.2f;          // Последние доли секунды прицел больше не следит за игроком.
-    public float cooldown = 2.0f;          // Перезарядка — окно для атаки игрока.
-    public EnemyProjectile arrowPrefab;
+    public EnemyProjectile arrowPrefab;    // Скорость и урон стрелы — в Arrow.asset.
     public AudioClip shootClip;
     public Vector2 bowOffset = new Vector2(0.45f, 0.1f);
 
@@ -32,6 +28,9 @@ public class GoblinArcher : Enemy
     private Vector2 target;
     private Animator anim;
 
+    // Время прицеливания, перезарядка, разворот — в ассете GoblinArcher.asset.
+    ArcherStats S => (ArcherStats)stats;
+
     Vector2 Facing => new Vector2(dir, 0f);
     Vector2 Bow => (Vector2)transform.position + new Vector2(bowOffset.x * dir, bowOffset.y);
 
@@ -42,6 +41,13 @@ public class GoblinArcher : Enemy
         dir = startFacingRight ? 1 : -1;
         if (aimLine != null)
             aimLine.gameObject.SetActive(false);
+    }
+
+    // Куда смотрит в начале (ставит LevelLoader).
+    public void SetFacing(bool right)
+    {
+        startFacingRight = right;
+        dir = right ? 1 : -1;
     }
 
     void FixedUpdate()
@@ -55,7 +61,7 @@ public class GoblinArcher : Enemy
         {
             case State.Watch:
                 turnTimer += Time.fixedDeltaTime;
-                if (turnTimer >= turnAroundTime)
+                if (turnTimer >= S.turnAroundTime)
                 {
                     turnTimer = 0f;
                     dir = -dir; // Оглядывается — сзади к нему тоже не подкрасться надолго.
@@ -66,13 +72,13 @@ public class GoblinArcher : Enemy
 
             case State.Aim:
                 timer -= Time.fixedDeltaTime;
-                if (!sees && timer > lockTime)
+                if (!sees && timer > S.lockTime)
                 {
                     StopAim(); // Игрок спрятался за стеной — отменяем выстрел.
                     state = State.Watch;
                     break;
                 }
-                if (timer > lockTime)
+                if (timer > S.lockTime)
                 {
                     target = PlayerCenter;            // Прицел следит за игроком...
                     dir = target.x > transform.position.x ? 1 : -1;
@@ -89,7 +95,7 @@ public class GoblinArcher : Enemy
                 Instantiate(arrowPrefab, Bow, Quaternion.Euler(0f, 0f, angle));
                 GameAudio.Play(shootClip, 0.7f);
                 state = State.Cooldown;
-                timer = cooldown;
+                timer = S.cooldown;
                 break;
 
             case State.Cooldown:
@@ -110,7 +116,7 @@ public class GoblinArcher : Enemy
     void StartAim()
     {
         state = State.Aim;
-        timer = aimTime;
+        timer = S.aimTime;
         target = PlayerCenter;
         BeginWindUp();
         if (anim != null)
@@ -140,7 +146,7 @@ public class GoblinArcher : Enemy
         t.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(diff.y, diff.x) * Mathf.Rad2Deg);
         t.localScale = new Vector3(diff.magnitude / pixelUnits, 0.35f, 1f);
         // Мигает быстрее, когда прицел зафиксирован.
-        float blink = timeLeft <= lockTime ? 0.06f : 0.14f;
+        float blink = timeLeft <= S.lockTime ? 0.06f : 0.14f;
         Color c = aimLine.color;
         c.a = Mathf.Repeat(timeLeft, blink) < blink / 2f ? 0.9f : 0.35f;
         aimLine.color = c;

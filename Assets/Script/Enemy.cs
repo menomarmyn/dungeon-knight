@@ -6,17 +6,15 @@ using UnityEngine;
 // SlimeEnemy (патруль), BatEnemy (таран), GoblinArcher (стрелок) и Boss наследуются от него.
 public class Enemy : MonoBehaviour
 {
-    [Header("Health")]
-    public int hp = 2;
-    public int contactDamage = 1;
-    public int scoreValue = 50; // Очки за победу над врагом.
+    [Header("Balance (data asset)")]
+    public EnemyStats stats;    // HP, урон, очки, зрение и числа атаки — в ассете Assets/Midterm/Data.
+
+    [Header("Look & sound")]
     public GameObject deathFx;
     public AudioClip hitClip;
     public AudioClip dieClip;
 
     [Header("Sight")]
-    public float viewDistance = 6f;            // Дальше этого врага не видит.
-    [Range(0f, 360f)] public float viewAngle = 120f; // Ширина конуса зрения (360 = видит во все стороны).
     public LayerMask wallMask;                 // Слой стен и пола: они закрывают обзор.
     public Vector2 eyeOffset = new Vector2(0f, 0.2f);
 
@@ -28,10 +26,12 @@ public class Enemy : MonoBehaviour
     protected SpriteRenderer sr;
     protected Rigidbody2D rb;
     protected bool dead;
+    protected int hp;            // Текущее здоровье (в начале = stats.maxHp).
     private Transform player;
 
     protected virtual void Awake()
     {
+        hp = stats.maxHp;
         sr = GetComponentInChildren<SpriteRenderer>();
         rb = GetComponent<Rigidbody2D>();
         if (alertIcon != null)
@@ -64,9 +64,9 @@ public class Enemy : MonoBehaviour
 
         Vector2 toPlayer = PlayerCenter - Eye;
         float dist = toPlayer.magnitude;
-        if (dist > viewDistance)
+        if (dist > stats.viewDistance)
             return false;
-        if (viewAngle < 360f && Vector2.Angle(facing, toPlayer) > viewAngle / 2f)
+        if (stats.viewAngle < 360f && Vector2.Angle(facing, toPlayer) > stats.viewAngle / 2f)
             return false;
 
         RaycastHit2D wall = Physics2D.Raycast(Eye, toPlayer / dist, dist, wallMask);
@@ -130,7 +130,7 @@ public class Enemy : MonoBehaviour
     protected virtual void Die()
     {
         dead = true;
-        GameScore.Add(scoreValue);
+        GameScore.Add(stats.scoreValue);
         if (deathFx != null)
             Instantiate(deathFx, transform.position, Quaternion.identity);
         GameAudio.Play(dieClip);
@@ -144,7 +144,7 @@ public class Enemy : MonoBehaviour
             return;
         Health h = other.GetComponent<Health>();
         if (h != null)
-            h.TakeDamage(contactDamage, transform.position);
+            h.TakeDamage(stats.contactDamage, transform.position);
     }
 
     // Конус зрения в окне Scene (когда объект выделен).
@@ -152,6 +152,7 @@ public class Enemy : MonoBehaviour
     {
         Gizmos.color = new Color(1f, 0.9f, 0.2f, 0.6f);
         Vector3 eye = transform.position + (Vector3)eyeOffset;
-        Gizmos.DrawWireSphere(eye, viewDistance);
+        if (stats != null)
+            Gizmos.DrawWireSphere(eye, stats.viewDistance);
     }
 }

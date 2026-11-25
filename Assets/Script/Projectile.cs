@@ -4,16 +4,16 @@ using UnityEngine;
 // На префабе нужны Rigidbody2D без гравитации и триггер-коллайдер.
 public class Projectile : MonoBehaviour
 {
-    public float speed = 12f;
-    public float lifetime = 3f;
-    public int damage = 1;
+    public ProjectileStats stats;   // Скорость, время жизни и урон — в ассете (Bullet, Arrow, Orb, Fireball).
     public GameObject hitFx;
+
+    protected int Damage => stats.damage;
 
     protected virtual void Start()
     {
         // Летим туда, куда смотрит снаряд (ось X объекта).
-        GetComponent<Rigidbody2D>().linearVelocity = transform.right * speed;
-        Destroy(gameObject, lifetime);
+        GetComponent<Rigidbody2D>().linearVelocity = transform.right * stats.speed;
+        Destroy(gameObject, stats.lifetime);
     }
 
     // Каждый наследник сам решает, в кого он попадает.

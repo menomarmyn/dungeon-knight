@@ -9,7 +9,7 @@ public class EnemyProjectile : Projectile
         {
             Health h = other.GetComponent<Health>();
             if (h != null)
-                h.TakeDamage(damage, transform.position);
+                h.TakeDamage(Damage, transform.position);
             Impact();
             return;
         }

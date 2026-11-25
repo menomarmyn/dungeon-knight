@@ -7,12 +7,9 @@ using UnityEngine.InputSystem.Users;
 [RequireComponent(typeof(Rigidbody2D), typeof(PlayerInput))]
 public class Player2D : MonoBehaviour
 {
-    public float speed = 7f;
-    public float jumpForce = 15f;
-    public float coyoteTime = 0.1f;      // Можно прыгнуть чуть позже, чем сошёл с края.
-    public float jumpBuffer = 0.12f;     // Нажатие прыжка чуть раньше приземления тоже считается.
+    public PlayerStats stats;            // Баланс героя: Assets/Midterm/Data/Player.asset.
     public LayerMask groundMask;         // Слой Ground: тайлы, уступы, движущиеся платформы.
-    public float deathY = -4f;           // Ниже этой высоты — падение в яму.
+    public float deathY;                 // Ниже этой высоты — падение в яму (ставит LevelLoader по карте).
     public AudioClip jumpClip;
 
     public int Crystals { get; private set; }
@@ -87,10 +84,10 @@ public class Player2D : MonoBehaviour
         if (jumpAction.WasPressedThisFrame())
             lastJumpPress = Time.time;
 
-        bool canJump = Time.time - lastGroundTime <= coyoteTime;
-        if (Time.time - lastJumpPress <= jumpBuffer && canJump)
+        bool canJump = Time.time - lastGroundTime <= stats.coyoteTime;
+        if (Time.time - lastJumpPress <= stats.jumpBuffer && canJump)
         {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, stats.jumpForce);
             lastJumpPress = -10f;
             lastGroundTime = -10f;
             onGround = false;
@@ -99,7 +96,7 @@ public class Player2D : MonoBehaviour
 
         // Отпустил кнопку раньше — прыжок ниже (управляемая высота прыжка).
         if (jumpAction.WasReleasedThisFrame() && rb.linearVelocity.y > 0f)
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * 0.5f);
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y * stats.jumpCutMultiplier);
 
         // Передаём параметры аниматору.
         anim.SetFloat("Speed", Mathf.Abs(x));
@@ -128,7 +125,7 @@ public class Player2D : MonoBehaviour
             return; // Во время отбрасывания не управляем скоростью.
 
         float x = moveAction.ReadValue<Vector2>().x;
-        Vector2 v = new Vector2(x * speed, rb.linearVelocity.y);
+        Vector2 v = new Vector2(x * stats.moveSpeed, rb.linearVelocity.y);
 
         // Стоим на движущейся платформе — едем вместе с ней.
         if (platform != null)
@@ -157,8 +154,8 @@ public class Player2D : MonoBehaviour
     public void Knockback(Vector2 from)
     {
         float dir = transform.position.x < from.x ? -1f : 1f;
-        rb.linearVelocity = new Vector2(dir * 6f, 8f);
-        knockbackUntil = Time.time + 0.2f;
+        rb.linearVelocity = new Vector2(dir * stats.knockback.x, stats.knockback.y);
+        knockbackUntil = Time.time + stats.knockbackTime;
     }
 
     public void AddCrystal()

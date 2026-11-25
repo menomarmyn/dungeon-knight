@@ -8,11 +8,12 @@ public class Spawner : MonoBehaviour
     // Здесь можно указать камни, бомбы и сердца.
     // Повтор объекта увеличивает шанс его появления.
     public Hazard[] prefabs;
-    public float firstDelay = 1f;
-    public float interval = 2f;
-    public float halfWidth = 9f; // Ширина зоны появления объектов.
+    // Числа задаёт LevelLoader из Items.asset (rockFirstDelay, rockInterval, rockSpreadX, rockWarnTime).
+    public float firstDelay;
+    public float interval;
+    public float halfWidth;      // Половина ширины зоны появления объектов.
     public AudioClip warnClip;   // Грохот — предупреждение до падения.
-    public float warnTime = 0.5f;
+    public float warnTime;
 
     void Start()
     {

@@ -3,7 +3,7 @@ using UnityEngine;
 // Статичная опасность: шипы ранят героя, пока он их касается.
 public class Spikes : MonoBehaviour
 {
-    public int damage = 1;
+    public ItemValues items;   // Урон шипов — items.spikeDamage.
 
     void OnTriggerStay2D(Collider2D other)
     {
@@ -11,6 +11,6 @@ public class Spikes : MonoBehaviour
             return;
         Health h = other.GetComponent<Health>();
         if (h != null)
-            h.TakeDamage(damage, (Vector2)other.transform.position + Vector2.down); // Подбрасывает вверх.
+            h.TakeDamage(items.spikeDamage, (Vector2)other.transform.position + Vector2.down); // Подбрасывает вверх.
     }
 }

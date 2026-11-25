@@ -1,14 +1,16 @@
 using UnityEngine;
 
-// Сердце лечит 1 HP. Если здоровье полное — остаётся лежать.
+// Сердце лечит heartHeal HP (Items.asset). Если здоровье полное — остаётся лежать.
 public class HeartPickup : Pickup
 {
+    public ItemValues items;
+
     protected override bool Collect(GameObject player)
     {
         Health h = player.GetComponent<Health>();
-        if (h.hp >= h.maxHp)
+        if (h.Hp >= h.MaxHp)
             return false;
-        h.Heal(1);
+        h.Heal(items.heartHeal);
         return true;
     }
 }

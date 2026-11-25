@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96a57419470068e4f9dcf30a243f48c3, type: 3}
+  m_Name: LevelPalette
+  m_EditorClassIdentifier: Assembly-CSharp::LevelPalette
+  player: {fileID: 8419517315220520781, guid: dee576afeba54044b93f65725df6dd61, type: 3}
+  crystal: {fileID: 1751279844782948850, guid: bba8876e1aca67844bf217786ad460b6, type: 3}
+  heart: {fileID: 7749655765330140988, guid: c1a16193a3f3228478929816286b0987, type: 3}
+  torch: {fileID: 1020614622999206982, guid: 03ea4e6abc964e2448513408545abc55, type: 3}
+  portal: {fileID: 8526085773784406847, guid: 82973342c6b213a4ba7b3eb0e39694f0, type: 3}
+  slime: {fileID: 4513405150523722773, guid: 6aa986ec1b6e56d488b510b988e32ffb, type: 3}
+  bat: {fileID: 4898550313324273435, guid: 852d349431cc63741b91b03c722eacae, type: 3}
+  goblin: {fileID: 5753614589758223519, guid: 8591c89ba0cb5914c831a1e5b812c3d9, type: 3}
+  boss: {fileID: 8175508760454086746, guid: f5aa8c2db0c2e6645b4e189e99a2445d, type: 3}
+  spikes: {fileID: 96615501620788906, guid: bb99c96152cc0b04ba7fc24992e6e3e1, type: 3}
+  platform: {fileID: 1228727589399986680, guid: 29f5314f3d5f2b347aa71acc83f38ff3, type: 3}
+  rock: {fileID: 1011691128894198045, guid: 47f0b07b5a997f043be24a4b65cf9596, type: 3}
+  topTiles:
+  - {fileID: 11400000, guid: c714f9e8a31d5d74eb031384f6eef7f0, type: 2}
+  - {fileID: 11400000, guid: 49bdef1d72b16ee4c8c31b7ecd769052, type: 2}
+  - {fileID: 11400000, guid: 99796881153f8944699bd4b7ae0d2825, type: 2}
+  innerTiles:
+  - {fileID: 11400000, guid: 01f9362a2c43d0247a2bf985f7726d5f, type: 2}
+  - {fileID: 11400000, guid: 3813c4f14d579dc42b875eb600c7b4c2, type: 2}
+  - {fileID: 11400000, guid: ada9e60a779480c4192948320d1de70a, type: 2}
+  ledgeTile: {fileID: 11400000, guid: b4b05c847962c5d40a7fec9d50cd46d7, type: 2}
+  spriteMaterial: {fileID: 2100000, guid: 9dfc825aed78fcd4ba02077103263b40, type: 2}
+  platformHorizontal: {fileID: 9100000, guid: 3dd1db546c459ca409ae1e8479be08bf, type: 2}
+  platformVertical: {fileID: 9100000, guid: 101e9a7ae8401c841b86fc9825153c06, type: 2}
+  skull: {fileID: 21300000, guid: 7e1fc10ab9a080045a4f11b6c286f3f6, type: 3}
+  wall: {fileID: 21300000, guid: ecc06680735d49e4d9b626ecf1ad9edd, type: 3}
+  arches: {fileID: 21300000, guid: eb157523beabb1e4e8744365c8257a70, type: 3}
+  pillar: {fileID: 21300000, guid: 5285b1550c9ef594e80d7cb4af289de3, type: 3}
+  banner: {fileID: 21300000, guid: edf5ed2a6f86d3341832cc6181f432ed, type: 3}
+  chain: {fileID: 21300000, guid: 7ef899d9dee5d49458f3ef4f2d83ccb4, type: 3}
+  dust: {fileID: 21300000, guid: cf1fea2b3d7cccf42b6c89c887893b98, type: 3}
+  signPlate: {fileID: 21300000, guid: c825610d3670cbc40a6434024ca264b1, type: 3}
+  signFont: {fileID: 11400000, guid: b56e389e8757877448affa8d52461b2d, type: 2}
+  items: {fileID: 11400000, guid: 76f07d8e3c6d52347a72bff970817a0a, type: 2}
+  rockWarnClip: {fileID: 8300000, guid: 8c6bd8cd6af40cf4fa8b25f0c26ab9cb, type: 3}

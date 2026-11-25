@@ -1,16 +1,15 @@
 using UnityEngine;
 
-// Портал-выход. Открывается, когда собрано нужное число кристаллов.
+// Портал-выход. Открывается, когда собрано нужное число кристаллов (LevelData.requiredCrystals).
 public class ExitPortal : MonoBehaviour
 {
-    public int requiredCrystals = 5;
-    public string nextScene = "Level2";
     public AudioClip openClip;
     public AudioClip lockedClip;
     public AudioClip enterClip;
 
     public static int Required { get; private set; } // Для HUD: сколько нужно на этом уровне.
 
+    private int requiredCrystals;
     private Animator anim;
     private Player2D player;
     private bool open;
@@ -19,8 +18,14 @@ public class ExitPortal : MonoBehaviour
 
     void Awake()
     {
-        Required = requiredCrystals;
         anim = GetComponent<Animator>();
+    }
+
+    // Вызывает LevelLoader сразу после создания портала.
+    public void Setup(int required)
+    {
+        requiredCrystals = required;
+        Required = required;
     }
 
     void Start()
@@ -56,10 +61,10 @@ public class ExitPortal : MonoBehaviour
             return;
         }
 
-        // Уровень пройден -> следующая сцена.
+        // Уровень пройден: сохраняем прогресс (save.json) и грузим следующий уровень.
         used = true;
         GameAudio.Play(enterClip);
         other.GetComponent<Player2D>().Freeze();
-        SceneFader.Load(nextScene);
+        GameSession.CompleteLevel();
     }
 }

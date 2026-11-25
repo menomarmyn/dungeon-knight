@@ -1,8 +1,10 @@
 // ============================================================================
 //  MIDTERM BUILDER — меню Midterm → Build Everything.
 //  Этот Editor-скрипт сам собирает проект: импорт спрайтов, нарезка спрайт-листов,
-//  тайлы, Animation Clips и Animator Controllers, префабы, 5 сцен, HUD с джойстиком,
+//  тайлы, Animation Clips и Animator Controllers, префабы, 3 сцены (меню, Game, победа), HUD с джойстиком,
 //  Build Settings, ориентация Landscape и Unity Remote (iOS).
+//  Неделя 11: баланс и уровни — в ассетах Assets/Midterm/Data (ScriptableObject). Сборщик создаёт их
+//  ТОЛЬКО если их ещё нет и потом никогда не перезаписывает: правь числа в Inspector.
 //  Игровая логика лежит в Assets/Script — этот файл только расставляет объекты.
 // ============================================================================
 using System;
@@ -33,7 +35,9 @@ public static class MidtermBuilder
     const string ScenesDir = "Assets/Scenes/Midterm";
     const float OrthoSize = 7f;
 
-    static readonly string[] SceneOrder = { "MainMenu", "Level1", "Level2", "Level3_Boss", "Win" };
+    const string DataDir = Root + "/Data";
+    static readonly string[] SceneOrder = { "MainMenu", "Game", "Win" };
+    static readonly string[] OldLevelScenes = { "Level1", "Level2", "Level3_Boss" }; // До недели 11: сцена на уровень.
 
     // Сколько кадров в каждом спрайт-листе (полоса кадров слева направо).
     static readonly Dictionary<string, int> Sheets = new Dictionary<string, int>
@@ -61,6 +65,17 @@ public static class MidtermBuilder
     static Tile tLedge;
     static AnimatorController cHero, cBossCtrl, cPlatH, cPlatV;
 
+    // Ассеты данных (неделя 11)
+    static PlayerStats dPlayer;
+    static SlimeStats dSlime;
+    static BatStats dBat;
+    static ArcherStats dArcher;
+    static BossStats dBoss;
+    static ItemValues dItems;
+    static ProjectileStats dBullet, dArrow, dOrb, dFireball;
+    static LevelData[] dLevels;
+    static LevelPalette dPalette;
+
     // ------------------------------------------------------------------ MENU
     [MenuItem("Midterm/Build Everything", priority = 0)]
     public static void BuildEverything()
@@ -75,7 +90,9 @@ public static class MidtermBuilder
             Step("Font", 0.25f); MakeFont();
             Step("Tiles", 0.3f); MakeTiles();
             Step("Animations", 0.4f); MakeAnimations();
+            Step("Data assets", 0.5f); EnsureData();
             Step("Prefabs", 0.55f); MakePrefabs();
+            Step("Level palette", 0.65f); FillPalette();
             Step("Scenes", 0.7f); BuildAllScenes();
             Step("Project settings", 0.95f); ConfigureProject();
             AssetDatabase.SaveAssets();
@@ -512,18 +529,18 @@ public static class MidtermBuilder
         // --- снаряды (наследники Projectile)
         g = Go("Bullet"); AddSR(g, Spr("FX/Bullet"), 12); AddRB(g, RigidbodyType2D.Dynamic).collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         var cc = g.AddComponent<CircleCollider2D>(); cc.isTrigger = true; cc.radius = 0.15f;
-        var bl = g.AddComponent<Bullet>(); bl.speed = 16f; bl.lifetime = 1.4f; bl.damage = 1; bl.hitFx = pSpark;
+        var bl = g.AddComponent<Bullet>(); bl.stats = dBullet; bl.hitFx = pSpark;
         pBullet = SavePrefab(g, "Bullet");
 
         g = Go("EnemyOrb"); AddSR(g, Spr("FX/EnemyOrb"), 13); AddRB(g, RigidbodyType2D.Dynamic);
         cc = g.AddComponent<CircleCollider2D>(); cc.isTrigger = true; cc.radius = 0.25f;
-        var ep = g.AddComponent<EnemyProjectile>(); ep.speed = 6f; ep.lifetime = 7f; ep.hitFx = pSpark;
+        var ep = g.AddComponent<EnemyProjectile>(); ep.stats = dOrb; ep.hitFx = pSpark;
         pOrb = SavePrefab(g, "EnemyOrb");
 
         g = Go("Fireball"); AddRB(g, RigidbodyType2D.Dynamic);
         var fs = Go("Sprite", g.transform); AddSR(fs, Spr("FX/Fireball"), 13); fs.transform.localRotation = Quaternion.Euler(0, 0, 90f);
         cc = g.AddComponent<CircleCollider2D>(); cc.isTrigger = true; cc.radius = 0.3f;
-        ep = g.AddComponent<EnemyProjectile>(); ep.speed = 9f; ep.lifetime = 4f; ep.hitFx = pPoof;
+        ep = g.AddComponent<EnemyProjectile>(); ep.stats = dFireball; ep.hitFx = pPoof;
         pFireball = SavePrefab(g, "Fireball");
 
         // --- предупреждение атаки босса: красная колонна + «!»
@@ -538,46 +555,46 @@ public static class MidtermBuilder
         // --- падающий сталактит (Rock : Hazard, твой класс из A6)
         g = Go("Stalactite"); AddSR(g, Spr("FX/Stalactite"), 6); AddRB(g, RigidbodyType2D.Dynamic, 1.3f);
         var bc = g.AddComponent<BoxCollider2D>(); bc.size = new Vector2(0.55f, 0.9f);
-        var rock = g.AddComponent<Rock>(); rock.lifetime = 6f; rock.breakOnGround = true; rock.breakFx = pPoof; rock.breakClip = Sfx("sfx_land_rock");
+        var rock = g.AddComponent<Rock>(); rock.items = dItems; rock.breakOnGround = true; rock.breakFx = pPoof; rock.breakClip = Sfx("sfx_land_rock");
         pRock = SavePrefab(g, "Stalactite");
 
         // --- подбираемые предметы
         g = Go("Crystal"); g.tag = "Crystal"; AddSR(g, Frames("Pickups/Crystal_Spin")[0], 4); AddAnim(g, Ctrls["Crystal"]);
         cc = g.AddComponent<CircleCollider2D>(); cc.isTrigger = true; cc.radius = 0.45f;
-        var cr = g.AddComponent<Crystal>(); cr.clip = Sfx("sfx_pickup"); cr.fx = pSpark;
+        var cr = g.AddComponent<Crystal>(); cr.items = dItems; cr.clip = Sfx("sfx_pickup"); cr.fx = pSpark;
         var glow = Go("Glow", g.transform); AddSR(glow, Spr("Background/Glow"), 3, new Color(0.3f, 0.9f, 1f, 0.6f)); glow.transform.localScale = Vector3.one * 0.8f;
         pCrystal = SavePrefab(g, "Crystal");
 
         g = Go("Heart"); AddAnim(g, Ctrls["Heart"]);
         var hs = Go("Sprite", g.transform); AddSR(hs, Spr("Pickups/Heart"), 4);
         cc = g.AddComponent<CircleCollider2D>(); cc.isTrigger = true; cc.radius = 0.45f;
-        g.AddComponent<HeartPickup>().fx = pSpark;
+        var hpk = g.AddComponent<HeartPickup>(); hpk.fx = pSpark; hpk.items = dItems;
         pHeart = SavePrefab(g, "Heart");
 
         // --- враги (наследники Enemy)
         g = Go("Slime"); g.tag = "Enemy"; AddSR(g, Frames("Enemies/Slime_Walk")[0], 5); AddAnim(g, Ctrls["Slime"]); AddRB(g, RigidbodyType2D.Kinematic);
         bc = g.AddComponent<BoxCollider2D>(); bc.isTrigger = true; bc.size = new Vector2(0.9f, 0.65f); bc.offset = new Vector2(0, -0.1f);
-        var sl = g.AddComponent<SlimeEnemy>(); sl.hp = 2; sl.deathFx = pPoof; sl.hitClip = Sfx("sfx_hit"); sl.dieClip = Sfx("sfx_enemy_die");
-        sl.viewDistance = 6f; sl.viewAngle = 120f; sl.eyeOffset = new Vector2(0, 0.1f); SetupEnemyAI(sl, g, 0.85f);
+        var sl = g.AddComponent<SlimeEnemy>(); sl.stats = dSlime; sl.deathFx = pPoof; sl.hitClip = Sfx("sfx_hit"); sl.dieClip = Sfx("sfx_enemy_die");
+        sl.eyeOffset = new Vector2(0, 0.1f); SetupEnemyAI(sl, g, 0.85f);
         pSlime = SavePrefab(g, "Slime");
 
         g = Go("Bat"); g.tag = "Enemy"; AddSR(g, Frames("Enemies/Bat_Fly")[0], 5); AddAnim(g, Ctrls["Bat"]); AddRB(g, RigidbodyType2D.Kinematic);
         bc = g.AddComponent<BoxCollider2D>(); bc.isTrigger = true; bc.size = new Vector2(0.8f, 0.5f);
-        var bt = g.AddComponent<BatEnemy>(); bt.hp = 1; bt.deathFx = pPoof; bt.hitClip = Sfx("sfx_hit"); bt.dieClip = Sfx("sfx_enemy_die");
-        bt.viewDistance = 6.5f; bt.viewAngle = 360f; bt.eyeOffset = Vector2.zero; SetupEnemyAI(bt, g, 0.8f);
+        var bt = g.AddComponent<BatEnemy>(); bt.stats = dBat; bt.deathFx = pPoof; bt.hitClip = Sfx("sfx_hit"); bt.dieClip = Sfx("sfx_enemy_die");
+        bt.eyeOffset = Vector2.zero; SetupEnemyAI(bt, g, 0.8f);
         pBat = SavePrefab(g, "Bat");
 
         // --- стрела лучника (наследник Projectile)
         g = Go("Arrow"); AddSR(g, Spr("FX/Arrow"), 13); AddRB(g, RigidbodyType2D.Dynamic);
         var acol = g.AddComponent<BoxCollider2D>(); acol.isTrigger = true; acol.size = new Vector2(0.7f, 0.2f);
-        ep = g.AddComponent<EnemyProjectile>(); ep.speed = 10f; ep.lifetime = 3f; ep.hitFx = pSpark;
+        ep = g.AddComponent<EnemyProjectile>(); ep.stats = dArrow; ep.hitFx = pSpark;
         pArrow = SavePrefab(g, "Arrow");
 
         // --- SHOOTER: гоблин-лучник
         g = Go("GoblinArcher"); g.tag = "Enemy"; AddSR(g, Frames("Enemies/Goblin_Idle")[0], 5); AddAnim(g, Ctrls["Goblin"]); AddRB(g, RigidbodyType2D.Kinematic);
         bc = g.AddComponent<BoxCollider2D>(); bc.isTrigger = true; bc.size = new Vector2(0.75f, 1.1f); bc.offset = new Vector2(0, -0.05f);
-        var gob = g.AddComponent<GoblinArcher>(); gob.hp = 2; gob.scoreValue = 75; gob.deathFx = pPoof; gob.hitClip = Sfx("sfx_hit"); gob.dieClip = Sfx("sfx_enemy_die");
-        gob.viewDistance = 9f; gob.viewAngle = 140f; gob.eyeOffset = new Vector2(0, 0.25f);
+        var gob = g.AddComponent<GoblinArcher>(); gob.stats = dArcher; gob.deathFx = pPoof; gob.hitClip = Sfx("sfx_hit"); gob.dieClip = Sfx("sfx_enemy_die");
+        gob.eyeOffset = new Vector2(0, 0.25f);
         gob.arrowPrefab = pArrow.GetComponent<EnemyProjectile>(); gob.shootClip = Sfx("sfx_shoot");
         var line = Go("AimLine", g.transform); var lsr = AddSR(line, Spr("FX/WhitePixel"), 8, new Color(1f, 0.15f, 0.2f, 0.8f));
         gob.aimLine = lsr; gob.pixelUnits = 0.25f;
@@ -587,7 +604,7 @@ public static class MidtermBuilder
         g = Go("SlimeKing"); g.tag = "Enemy"; AddSR(g, Frames("Boss/Boss_Idle")[0], 6); AddAnim(g, cBossCtrl); AddRB(g, RigidbodyType2D.Kinematic);
         var bcap = g.AddComponent<CapsuleCollider2D>(); bcap.isTrigger = true; bcap.direction = CapsuleDirection2D.Horizontal;
         bcap.size = new Vector2(2.6f, 2.0f); bcap.offset = new Vector2(0, -0.35f);
-        var boss = g.AddComponent<Boss>(); boss.hp = 20; boss.scoreValue = 1000; boss.deathFx = pPoof; boss.hitClip = Sfx("sfx_hit"); boss.dieClip = Sfx("sfx_enemy_die");
+        var boss = g.AddComponent<Boss>(); boss.stats = dBoss; boss.deathFx = pPoof; boss.hitClip = Sfx("sfx_hit"); boss.dieClip = Sfx("sfx_enemy_die");
         boss.orbPrefab = pOrb.GetComponent<EnemyProjectile>(); boss.fireballPrefab = pFireball.GetComponent<EnemyProjectile>();
         boss.warningPrefab = pWarning; boss.shotClip = Sfx("sfx_boss_shot"); boss.warningClip = Sfx("sfx_warning"); boss.roarClip = Sfx("sfx_boss_roar");
         boss.windUpClip = Sfx("sfx_windup_boss");
@@ -596,7 +613,7 @@ public static class MidtermBuilder
         // --- окружение
         g = Go("Spikes"); var ssr = AddSR(g, Spr("Level/Spikes"), 1); ssr.drawMode = SpriteDrawMode.Tiled; ssr.size = new Vector2(1, 1);
         bc = g.AddComponent<BoxCollider2D>(); bc.isTrigger = true; bc.size = new Vector2(0.8f, 0.45f); bc.offset = new Vector2(0, -0.25f);
-        g.AddComponent<Spikes>();
+        g.AddComponent<Spikes>().items = dItems;
         pSpikes = SavePrefab(g, "Spikes");
 
         g = Go("Portal"); g.tag = "Exit"; AddSR(g, Spr("Level/Portal_Closed"), 2); AddAnim(g, Ctrls["Portal"]);
@@ -632,9 +649,9 @@ public static class MidtermBuilder
         pi.actions = actions;
         pi.defaultActionMap = "Player";
         pi.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
-        var pl = g.AddComponent<Player2D>(); pl.groundMask = 1 << groundLayer; pl.jumpClip = Sfx("sfx_jump");
-        var hp = g.AddComponent<Health>(); hp.hurtClip = Sfx("sfx_hurt"); hp.healClip = Sfx("sfx_heal"); hp.loseClip = Sfx("sfx_lose"); hp.deathFx = pPoof;
-        var sh = g.AddComponent<Shooter>(); sh.bulletPrefab = pBullet.GetComponent<Bullet>(); sh.shootClip = Sfx("sfx_shoot");
+        var pl = g.AddComponent<Player2D>(); pl.stats = dPlayer; pl.groundMask = 1 << groundLayer; pl.jumpClip = Sfx("sfx_jump");
+        var hp = g.AddComponent<Health>(); hp.stats = dPlayer; hp.hurtClip = Sfx("sfx_hurt"); hp.healClip = Sfx("sfx_heal"); hp.loseClip = Sfx("sfx_lose"); hp.deathFx = pPoof;
+        var sh = g.AddComponent<Shooter>(); sh.stats = dPlayer; sh.bulletPrefab = pBullet.GetComponent<Bullet>(); sh.shootClip = Sfx("sfx_shoot");
         pPlayer = SavePrefab(g, "Player");
 
         pHUD = MakeHUD();
@@ -737,8 +754,8 @@ public static class MidtermBuilder
         // Сердца (HP)
         hud.heartFull = Spr("UI/UI_HeartFull");
         hud.heartEmpty = Spr("UI/UI_HeartEmpty");
-        hud.hearts = new Image[3];
-        for (int i = 0; i < 3; i++)
+        hud.hearts = new Image[5]; // Запас на случай, если в Player.asset maxHp > 3 (лишние скрыты).
+        for (int i = 0; i < 5; i++)
         {
             hud.hearts[i] = Img("Heart" + i, safe, hud.heartFull, new Vector2(0, 1), new Vector2(0, 1), new Vector2(40 + i * 100, -36), new Vector2(91, 85));
             hud.hearts[i].raycastTarget = false;
@@ -772,6 +789,9 @@ public static class MidtermBuilder
         var plate = Img("ScorePlate", safe, Spr("UI/UI_Panel"), new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -30), new Vector2(520, 96), true);
         plate.raycastTarget = false;
         hud.scoreText = Txt("Score", plate.transform, "SCORE 0", 44, new Color32(254, 231, 97, 255), new Vector2(0.5f, 0.5f), new Vector2(0, 2), new Vector2(500, 80), TextAlignmentOptions.Center, false);
+
+        // Лимит времени уровня — под кнопкой паузы.
+        hud.timerText = Txt("Timer", safe, "", 40, Color.white, new Vector2(1, 1), new Vector2(-220, -215), new Vector2(360, 70), TextAlignmentOptions.Right, false);
 
         // Кнопка паузы: правый верхний угол, 140×140 (больше 120 — удобно для пальца).
         var pauseMenu = g.AddComponent<PauseMenu>();
@@ -850,9 +870,12 @@ public static class MidtermBuilder
     static void BuildAllScenes()
     {
         BuildMenu();
-        foreach (string lvl in new[] { "Level1", "Level2", "Level3_Boss" })
-            BuildLevel(lvl);
+        BuildGame();
         BuildWin();
+        // Старые сцены уровней больше не нужны: все уровни играются в сцене Game.
+        foreach (string old in OldLevelScenes)
+            if (File.Exists(ScenesDir + "/" + old + ".unity"))
+                AssetDatabase.DeleteAsset(ScenesDir + "/" + old + ".unity");
     }
 
     static Camera MakeCamera(Vector3 pos)
@@ -879,8 +902,9 @@ public static class MidtermBuilder
     {
         var s = (GameObject)PrefabUtility.InstantiatePrefab(pSystems);
         var ga = s.GetComponent<GameAudio>();
+        if (music == null) return; // Сцена Game: музыку ставит LevelLoader из LevelData.
         ga.music = Sfx("music_" + music);
-        ga.musicVolume = music == "menu" ? 0.45f : 0.35f;
+        ga.musicVolume = 0.45f;
     }
 
     static Tilemap MakeTilemap(Transform grid, string name, bool oneWay)
@@ -968,153 +992,19 @@ public static class MidtermBuilder
         d.spin = spin;
     }
 
-    static void BuildLevel(string name)
+    // Одна сцена на все уровни: LevelLoader строит уровень из LevelData во время игры.
+    static void BuildGame()
     {
-        // --- читаем текстовую карту уровня
-        string[] lines = File.ReadAllLines(Root + "/Levels/" + name + ".txt");
-        var header = new Dictionary<string, string>();
-        var map = new List<string>();
-        var signs = new Dictionary<char, string>();
-        int mode = 0;
-        foreach (string raw in lines)
-        {
-            string l = raw.TrimEnd('\r');
-            if (l == "===") { mode = 1; continue; }
-            if (l == "---") { mode = 2; continue; }
-            if (mode == 0 && l.Contains("=")) { var kv = l.Split(new[] { '=' }, 2); header[kv[0]] = kv[1]; }
-            else if (mode == 1) map.Add(l);
-            else if (mode == 2 && l.Length > 2) signs[l[0]] = l.Substring(2);
-        }
-        int H = map.Count, W = map.Max(r => r.Length);
-        char At(int x, int y) => (y < 0 || y >= H || x < 0 || x >= map[H - 1 - y].Length) ? (y < 0 ? '.' : '#') : map[H - 1 - y][x];
-        bool Solid(int x, int y) => At(x, y) == '#';
-        bool Free(int x, int y) => At(x, y) != '#' && At(x, y) != '=';
-
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var cam = MakeCamera(new Vector3(10, 7, 0));
-        MakeEventSystem();
-        MakeSystemsInstance(header["music"]);
-
-        var level = Go("Level");
-        var grid = Go("Grid", level.transform).AddComponent<Grid>();
-        var solid = MakeTilemap(grid.transform, "Stone", false);
-        var ledges = MakeTilemap(grid.transform, "Ledges", true);
-        var actors = Go("Actors").transform;
-        var pickups = Go("Pickups").transform;
-        var deco = Go("Decor", level.transform).transform;
-        GameObject player = null;
-        Vector3 bossPos = Vector3.zero;
-        bool hasBoss = false;
-
-        for (int y = 0; y < H; y++)
-        {
-            for (int x = 0; x < W; x++)
-            {
-                char ch = At(x, y);
-                int v = (x * 7 + y * 13) % 3;
-                Vector3 cell = new Vector3(x + 0.5f, y + 0.5f, 0);
-                switch (ch)
-                {
-                    case '#': solid.SetTile(new Vector3Int(x, y, 0), Solid(x, y + 1) ? tInner[v] : tTop[v]); break;
-                    case '=': ledges.SetTile(new Vector3Int(x, y, 0), tLedge); break;
-                    case 'P': player = Place(pPlayer, new Vector3(x + 0.5f, y, 0)); break;
-                    case 'c': Place(pCrystal, cell, pickups); break;
-                    case '+': Place(pHeart, cell, pickups); break;
-                    case 'T': Place(pTorch, cell, deco); break;
-                    case 'k':
-                        var sk = Go("Skull", deco); AddSR(sk, Spr("Background/Skull"), -2); sk.transform.position = new Vector3(x + 0.5f, y + 0.31f, 0);
-                        break;
-                    case 'E':
-                        var portal = Place(pPortal, new Vector3(x + 0.5f, y, 0), actors).GetComponent<ExitPortal>();
-                        portal.requiredCrystals = int.Parse(header["required"]);
-                        portal.nextScene = header["next"];
-                        break;
-                    case 's':
-                    {
-                        int l = x, r = x;
-                        while (Free(l - 1, y) && At(l - 1, y) != '^' && !Free(l - 1, y - 1)) l--;
-                        while (Free(r + 1, y) && At(r + 1, y) != '^' && !Free(r + 1, y - 1)) r++;
-                        var s = Place(pSlime, new Vector3(x + 0.5f, y + 0.44f, 0), actors).GetComponent<SlimeEnemy>();
-                        float sy = y + 0.44f; // маршрут патруля: края платформы
-                        s.waypoints = new[] { new Vector2(l + 0.5f, sy), new Vector2(r + 0.5f, sy) };
-                        break;
-                    }
-                    case 'b':
-                    {
-                        int l = x, r = x;
-                        while (l > x - 5 && Free(l - 1, y) && Free(l - 1, y + 1) && Free(l - 1, y - 1)) l--;
-                        while (r < x + 5 && Free(r + 1, y) && Free(r + 1, y + 1) && Free(r + 1, y - 1)) r++;
-                        var b = Place(pBat, cell, actors).GetComponent<BatEnemy>();
-                        b.waypoints = new[] { new Vector2(l + 0.5f, y + 0.5f), new Vector2(r + 0.5f, y + 0.5f) };
-                        break;
-                    }
-                    case 'M':
-                    case 'L':
-                    {
-                        var p = Place(pPlatform, new Vector3(x + 1.5f, y + 0.375f, 0), actors);
-                        p.GetComponent<Animator>().runtimeAnimatorController = ch == 'M' ? cPlatH : cPlatV;
-                        p.name = ch == 'M' ? "MovingPlatform" : "Lift";
-                        break;
-                    }
-                    case 'r':
-                    {
-                        var sp = Go("RockSpawner", actors).AddComponent<Spawner>();
-                        sp.transform.position = cell;
-                        sp.prefabs = new Hazard[] { pRock.GetComponent<Hazard>() };
-                        sp.firstDelay = 0.5f; sp.interval = 1.1f; sp.halfWidth = 3.5f;
-                        sp.warnClip = Sfx("sfx_rumble"); sp.warnTime = 0.5f;
-                        break;
-                    }
-                    case 'a':
-                    {
-                        var gob = Place(pGoblin, new Vector3(x + 0.5f, y + 0.62f, 0), actors).GetComponent<GoblinArcher>();
-                        gob.startFacingRight = false; // смотрит навстречу игроку, который идёт слева
-                        break;
-                    }
-                    case 'B': hasBoss = true; bossPos = cell; break;
-                    case '^':
-                        if (At(x - 1, y) != '^')
-                        {
-                            int n = 1;
-                            while (At(x + n, y) == '^') n++;
-                            var sp = Place(pSpikes, new Vector3(x + n / 2f, y + 0.5f, 0), actors);
-                            sp.GetComponent<SpriteRenderer>().size = new Vector2(n, 1);
-                            var bc = sp.GetComponent<BoxCollider2D>(); bc.size = new Vector2(n - 0.25f, 0.45f);
-                        }
-                        break;
-                    default:
-                        if (signs.ContainsKey(ch)) MakeSign(deco, signs[ch], cell);
-                        break;
-                }
-            }
-        }
-
-        FinishTilemap(solid);
-        FinishTilemap(ledges);
-        MakeBackground(level.transform, 0, W, 2, H - 1, Free);
-        AddDust("Background/Dust", 35, new Vector2(0.25f, 0.35f), new[] { new Color(1f, 0.85f, 0.6f, 0.35f), new Color(0.6f, 0.9f, 1f, 0.3f) });
-
-        // HUD
-        var hudGo = (GameObject)PrefabUtility.InstantiatePrefab(pHUD);
-        var hud = hudGo.GetComponent<HUD>();
-        hud.levelTitle = header["title"];
-        hud.showCrystals = !hasBoss;
-
-        if (hasBoss)
-        {
-            var b = Place(pBoss, bossPos, actors).GetComponent<Boss>();
-            b.arenaLeft = 1f; b.arenaRight = W - 1f; b.floorY = 2f; b.ceilingY = H - 3f; b.winScene = header["next"];
-        }
-
-        // Камера сбоку следует за героем
         var follow = cam.gameObject.AddComponent<CameraFollow2D>();
-        follow.target = player.transform;
-        follow.levelMinX = 0f; follow.levelMaxX = W;
-        follow.minY = OrthoSize - 0.5f; follow.maxY = H - OrthoSize;
-        player.GetComponent<Player2D>().deathY = -3f;
-        cam.transform.position = new Vector3(Mathf.Max(player.transform.position.x, 12f), OrthoSize - 0.5f, -10f);
-
-        EditorSceneManager.SaveScene(scene, ScenesDir + "/" + name + ".unity");
+        MakeEventSystem();
+        MakeSystemsInstance(null);
+        var hudGo = (GameObject)PrefabUtility.InstantiatePrefab(pHUD);
+        var loader = Go("LevelLoader").AddComponent<LevelLoader>();
+        loader.hud = hudGo.GetComponent<HUD>();
+        loader.cameraFollow = follow;
+        EditorSceneManager.SaveScene(scene, ScenesDir + "/Game.unity");
     }
 
     static void MakeSign(Transform parent, string text, Vector3 pos)
@@ -1158,6 +1048,7 @@ public static class MidtermBuilder
         Txt("Title", safe, "DUNGEON KNIGHT", 96, new Color32(254, 174, 52, 255), new Vector2(0.5f, 1), new Vector2(0, -200), new Vector2(1400, 140)); // 14 букв × 96 = 1344 px — влезает в 4:3 (1440)
         Txt("Subtitle", safe, "RISE OF THE SLIME KING", 40, new Color32(199, 253, 255, 255), new Vector2(0.5f, 1), new Vector2(0, -320), new Vector2(1600, 60));
 
+        mb.bestText = Txt("Best", safe, "BEST 0", 36, new Color32(254, 231, 97, 255), new Vector2(0.5f, 1), new Vector2(0, -395), new Vector2(1000, 60));
         var play = MakeButton("PlayButton", safe, "PLAY", Spr("UI/UI_Button"), new Vector2(0, 20), new Vector2(560, 140));
         UnityEventTools.AddPersistentListener(play.onClick, mb.Play);
         var settings = MakeButton("SettingsButton", safe, "SETTINGS", Spr("UI/UI_ButtonGrey"), new Vector2(0, -130), new Vector2(560, 120));
@@ -1167,6 +1058,8 @@ public static class MidtermBuilder
 
         Txt("Hint", safe, "COLLECT CRYSTALS - DEFEAT THE KING", 36, new Color32(192, 203, 220, 255), new Vector2(0.5f, 0), new Vector2(0, 70), new Vector2(1800, 60));
         mb.settingsPanel = MakeSettingsPanel(cv.transform, mb);
+        MakeLevelSelect(cv.transform, mb);
+        mb.confirmPanel = MakeConfirmPanel(cv.transform, mb);
 
         EditorSceneManager.SaveScene(scene, ScenesDir + "/MainMenu.unity");
     }
@@ -1223,6 +1116,7 @@ public static class MidtermBuilder
         Txt("Title", safe, "YOU WIN!", 140, new Color32(254, 231, 97, 255), new Vector2(0.5f, 1), new Vector2(0, -190), new Vector2(1800, 170));
         Txt("Subtitle", safe, "THE SLIME KING IS DEFEATED", 40, new Color32(199, 253, 255, 255), new Vector2(0.5f, 1), new Vector2(0, -320), new Vector2(1700, 60));
         mb.scoreText = Txt("Score", safe, "SCORE 0", 56, new Color32(254, 174, 52, 255), new Vector2(0.5f, 1), new Vector2(0, -420), new Vector2(1200, 80));
+        mb.bestText = Txt("Best", safe, "BEST 0", 36, new Color32(254, 231, 97, 255), new Vector2(0.5f, 1), new Vector2(0, -495), new Vector2(1000, 60));
         var menu = MakeButton("MenuButton", safe, "MAIN MENU", Spr("UI/UI_Button"), new Vector2(0, -330), new Vector2(620, 140));
         UnityEventTools.AddPersistentListener(menu.onClick, mb.BackToMenu);
         Txt("Thanks", safe, "THANKS FOR PLAYING!", 36, new Color32(192, 203, 220, 255), new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(1600, 60));
@@ -1240,11 +1134,15 @@ public static class MidtermBuilder
         var psafe = UI("SafeArea", panel.transform, Vector2.zero, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
         Stretch(psafe);
         psafe.gameObject.AddComponent<SafeArea>();
-        var win = Img("Window", psafe, Spr("UI/UI_Panel"), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1100, 760), true);
+        var win = Img("Window", psafe, Spr("UI/UI_Panel"), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1100, 880), true);
         Txt("Title", win.transform, "SETTINGS", 84, new Color32(254, 174, 52, 255), new Vector2(0.5f, 1), new Vector2(0, -105), new Vector2(1000, 110));
-        MakeVolumeSlider(win.transform, "MUSIC", AudioPrefs.Music, new Vector2(0, 110));
-        MakeVolumeSlider(win.transform, "SFX", AudioPrefs.Sfx, new Vector2(0, -60));
-        var back = MakeButton("BackButton", win.transform, "BACK", Spr("UI/UI_Button"), new Vector2(0, -235), new Vector2(520, 130));
+        MakeVolumeSlider(win.transform, "MUSIC", AudioPrefs.Music, new Vector2(0, 150));
+        MakeVolumeSlider(win.transform, "SFX", AudioPrefs.Sfx, new Vector2(0, -10));
+        var reset = MakeButton("ResetButton", win.transform, "RESET PROGRESS", Spr("UI/UI_ButtonGrey"), new Vector2(0, -165), new Vector2(680, 110));
+        reset.transform.Find("Label").GetComponent<TextMeshProUGUI>().fontSize = 40;
+        reset.transform.Find("Label_Shadow").GetComponent<TextMeshProUGUI>().fontSize = 40;
+        UnityEventTools.AddPersistentListener(reset.onClick, mb.AskReset);
+        var back = MakeButton("BackButton", win.transform, "BACK", Spr("UI/UI_Button"), new Vector2(0, -310), new Vector2(520, 110));
         UnityEventTools.AddPersistentListener(back.onClick, mb.CloseSettings);
         panel.gameObject.SetActive(false);
         return panel.gameObject;
@@ -1274,13 +1172,65 @@ public static class MidtermBuilder
         slider.handleRect = handle.rectTransform;
         slider.targetGraphic = handle;
         slider.direction = Slider.Direction.LeftToRight;
-        slider.minValue = 0.0001f; slider.maxValue = 1f; slider.value = AudioPrefs.Default;
+        slider.minValue = AudioPrefs.Min; slider.maxValue = 1f; slider.value = 1f;
         var nav = slider.navigation; nav.mode = Navigation.Mode.None; slider.navigation = nav;
 
         var vs = row.gameObject.AddComponent<VolumeSlider>();
         vs.param = param;
         vs.slider = slider;
         vs.valueText = Txt("Value", row, "0 dB", 34, new Color32(254, 231, 97, 255), new Vector2(1, 0.5f), new Vector2(-115, 0), new Vector2(230, 70), TextAlignmentOptions.Right, false);
+    }
+
+    // ------------------------------------------------------------------ LEVEL SELECT & RESET (неделя 11)
+    static Image Overlay(string name, Transform canvas, out RectTransform safe)
+    {
+        var panel = Img(name, canvas, Spr("FX/WhitePixel"), Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+        Stretch(panel.rectTransform);
+        panel.color = new Color(0.05f, 0.04f, 0.09f, 0.85f);
+        safe = UI("SafeArea", panel.transform, Vector2.zero, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+        Stretch(safe);
+        safe.gameObject.AddComponent<SafeArea>();
+        return panel;
+    }
+
+    // Выбор уровня: кнопка на каждый уровень из LevelCatalog. Текст и замки ставит MenuButtons из save.json.
+    static void MakeLevelSelect(Transform canvas, MenuButtons mb)
+    {
+        var panel = Overlay("LevelSelectPanel", canvas, out var psafe);
+        var win = Img("Window", psafe, Spr("UI/UI_Panel"), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1100, 820), true);
+        Txt("Title", win.transform, "SELECT LEVEL", 76, new Color32(254, 174, 52, 255), new Vector2(0.5f, 1), new Vector2(0, -95), new Vector2(1000, 100));
+        int n = dLevels.Length;
+        mb.levelButtons = new Button[n];
+        mb.levelLabels = new TextMeshProUGUI[n];
+        for (int i = 0; i < n; i++)
+        {
+            var b = MakeButton("Level" + (i + 1) + "Button", win.transform, dLevels[i].title, Spr("UI/UI_ButtonGrey"), new Vector2(0, 150 - i * 140), new Vector2(920, 120));
+            Object.DestroyImmediate(b.transform.Find("Label_Shadow").gameObject); // Текст меняется — тень не нужна.
+            var label = b.transform.Find("Label").GetComponent<TextMeshProUGUI>();
+            label.enableAutoSizing = true; label.fontSizeMin = 24; label.fontSizeMax = 40;
+            UnityEventTools.AddIntPersistentListener(b.onClick, mb.SelectLevel, i);
+            mb.levelButtons[i] = b;
+            mb.levelLabels[i] = label;
+        }
+        var back = MakeButton("BackButton", win.transform, "BACK", Spr("UI/UI_Button"), new Vector2(0, -300), new Vector2(520, 110));
+        UnityEventTools.AddPersistentListener(back.onClick, mb.CloseLevelSelect);
+        mb.levelSelectPanel = panel.gameObject;
+        panel.gameObject.SetActive(false);
+    }
+
+    // Подтверждение сброса прогресса (внутриигровое окно, не системный диалог).
+    static GameObject MakeConfirmPanel(Transform canvas, MenuButtons mb)
+    {
+        var panel = Overlay("ConfirmResetPanel", canvas, out var psafe);
+        var win = Img("Window", psafe, Spr("UI/UI_Panel"), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1100, 560), true);
+        Txt("Title", win.transform, "RESET ALL PROGRESS?", 60, new Color32(246, 117, 122, 255), new Vector2(0.5f, 1), new Vector2(0, -100), new Vector2(1040, 90));
+        Txt("Text", win.transform, "UNLOCKED LEVELS AND BEST SCORE WILL BE ERASED", 30, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0, 30), new Vector2(1040, 60));
+        var yes = MakeButton("YesButton", win.transform, "YES", Spr("UI/UI_Button"), new Vector2(-230, -150), new Vector2(380, 120));
+        UnityEventTools.AddPersistentListener(yes.onClick, mb.ConfirmReset);
+        var no = MakeButton("NoButton", win.transform, "NO", Spr("UI/UI_ButtonGrey"), new Vector2(230, -150), new Vector2(380, 120));
+        UnityEventTools.AddPersistentListener(no.onClick, mb.CancelReset);
+        panel.gameObject.SetActive(false);
+        return panel.gameObject;
     }
 
     // Версии звуков: sfx_hit -> sfx_hit_2, sfx_hit_3 (GameAudio выбирает случайную, без повтора подряд).
@@ -1352,6 +1302,129 @@ public static class MidtermBuilder
         foreach (string s in new[] { "Normal", "Paused" })
             if (mixer.FindSnapshot(s) == null) { Debug.LogError("Нет snapshot " + s); bad++; }
         if (bad == 0) Debug.Log("<color=#7CFC00><b>Микшер GameMix в порядке.</b></color>");
+    }
+
+    // ------------------------------------------------------------------ DATA ASSETS (неделя 11)
+    // Создаёт ассет, только если его ещё нет. Значения ниже — стартовые (их перенесли из старых скриптов);
+    // дальше баланс правится в Inspector, и повторная сборка их НЕ перезаписывает.
+    static T EnsureAsset<T>(string path, Action<T> defaults) where T : ScriptableObject
+    {
+        var a = AssetDatabase.LoadAssetAtPath<T>(path);
+        if (a != null)
+            return a;
+        a = ScriptableObject.CreateInstance<T>();
+        defaults(a);
+        AssetDatabase.CreateAsset(a, path);
+        Debug.Log("[Midterm] Created data asset " + path);
+        return a;
+    }
+
+    static void EnsureData()
+    {
+        Folder(DataDir);
+        Folder(Root + "/Resources");
+
+        dPlayer = EnsureAsset<PlayerStats>(DataDir + "/Player.asset", p =>
+        {
+            p.moveSpeed = 7f; p.jumpForce = 15f; p.coyoteTime = 0.1f; p.jumpBuffer = 0.12f; p.jumpCutMultiplier = 0.5f;
+            p.maxHp = 3; p.invincibleTime = 1.2f; p.knockback = new Vector2(6f, 8f); p.knockbackTime = 0.2f;
+            p.fireCooldown = 0.25f;
+        });
+        dSlime = EnsureAsset<SlimeStats>(DataDir + "/Slime.asset", e =>
+        {
+            e.maxHp = 2; e.contactDamage = 1; e.scoreValue = 50; e.viewDistance = 6f; e.viewAngle = 120f;
+            e.patrolSpeed = 1.6f; e.waitAtPoint = 0.6f; e.chaseSpeed = 2.8f; e.loseSightTime = 1.5f; e.attackRange = 1.8f;
+            e.windUp = 0.45f; e.lungeSpeed = 7f; e.lungeTime = 0.3f; e.cooldown = 1.2f;
+        });
+        dBat = EnsureAsset<BatStats>(DataDir + "/Bat.asset", e =>
+        {
+            e.maxHp = 1; e.contactDamage = 1; e.scoreValue = 50; e.viewDistance = 6.5f; e.viewAngle = 360f;
+            e.patrolSpeed = 2.2f; e.waveHeight = 0.4f; e.windUp = 0.6f; e.dashSpeed = 11f; e.dashTime = 0.45f;
+            e.recoverTime = 1.4f; e.returnSpeed = 2.5f;
+        });
+        dArcher = EnsureAsset<ArcherStats>(DataDir + "/GoblinArcher.asset", e =>
+        {
+            e.maxHp = 2; e.contactDamage = 1; e.scoreValue = 75; e.viewDistance = 9f; e.viewAngle = 140f;
+            e.turnAroundTime = 3f; e.aimTime = 0.6f; e.lockTime = 0.2f; e.cooldown = 2.0f;
+        });
+        dBoss = EnsureAsset<BossStats>(DataDir + "/SlimeKing.asset", e =>
+        {
+            e.maxHp = 20; e.contactDamage = 1; e.scoreValue = 1000; e.viewDistance = 0f; e.viewAngle = 360f;
+            e.phase2At = 0.5f; e.introDelay = 1f;
+            e.moveTime = 1.1f; e.moveTimePhase2 = 0.7f; e.hoverHeight = new Vector2(3.5f, 6f); e.arenaMargin = new Vector2(6f, 3.5f);
+            e.fanWindUp = 0.45f; e.fanCount = 5; e.fanCountPhase2 = 9; e.fanSpread = 60f; e.fanSpreadPhase2 = 100f;
+            e.fanWaves = 1; e.fanWavesPhase2 = 2; e.fanWaveGap = 0.45f; e.pauseAfterFan = 1.4f; e.pauseAfterFanPhase2 = 0.7f;
+            e.rainColumns = 3; e.rainColumnsPhase2 = 5; e.rainWarnTime = 1.1f; e.rainWarnTimePhase2 = 0.8f;
+            e.pauseAfterRain = 1.6f; e.pauseAfterRainPhase2 = 0.8f;
+        });
+        dItems = EnsureAsset<ItemValues>(DataDir + "/Items.asset", i =>
+        {
+            i.crystalScore = 100; i.heartHeal = 1; i.spikeDamage = 1; i.rockDamage = 1; i.rockLifetime = 6f;
+            i.rockFirstDelay = 0.5f; i.rockInterval = 1.1f; i.rockSpreadX = 3.5f; i.rockWarnTime = 0.5f;
+        });
+        dBullet = EnsureAsset<ProjectileStats>(DataDir + "/Bullet.asset", p => { p.speed = 16f; p.lifetime = 1.4f; p.damage = 1; });
+        dArrow = EnsureAsset<ProjectileStats>(DataDir + "/Arrow.asset", p => { p.speed = 10f; p.lifetime = 3f; p.damage = 1; });
+        dOrb = EnsureAsset<ProjectileStats>(DataDir + "/Orb.asset", p => { p.speed = 6f; p.lifetime = 7f; p.damage = 1; });
+        dFireball = EnsureAsset<ProjectileStats>(DataDir + "/Fireball.asset", p => { p.speed = 9f; p.lifetime = 4f; p.damage = 1; });
+
+        // Уровни: при первой сборке переносим карты из старых Levels/*.txt.
+        var txt = new[] { "Level1", "Level2", "Level3_Boss" };
+        var limits = new[] { 180f, 240f, 240f };
+        dLevels = new LevelData[txt.Length];
+        for (int i = 0; i < txt.Length; i++)
+        {
+            int k = i;
+            dLevels[i] = EnsureAsset<LevelData>(DataDir + "/Level_0" + (i + 1) + ".asset", l => FromText(l, txt[k], limits[k]));
+        }
+
+        var catalog = EnsureAsset<LevelCatalog>(Root + "/Resources/LevelCatalog.asset", c => c.levels = dLevels);
+        if (catalog.levels == null || catalog.levels.Length == 0 || catalog.levels.Any(l => l == null))
+            catalog.levels = dLevels;
+        dLevels = catalog.levels; // Порядок уровней задаёт каталог.
+        dPalette = EnsureAsset<LevelPalette>(DataDir + "/LevelPalette.asset", p => { });
+        catalog.palette = dPalette;
+        EditorUtility.SetDirty(catalog);
+    }
+
+    // Перенос старого текстового уровня (заголовок, карта, таблички) в LevelData.
+    static void FromText(LevelData l, string file, float timeLimit)
+    {
+        var header = new Dictionary<string, string>();
+        var map = new List<string>();
+        var signs = new List<string>();
+        int mode = 0;
+        foreach (string raw in File.ReadAllLines(Root + "/Levels/" + file + ".txt"))
+        {
+            string line = raw.TrimEnd('\r');
+            if (line == "===") { mode = 1; continue; }
+            if (line == "---") { mode = 2; continue; }
+            if (mode == 0 && line.Contains("=")) { var kv = line.Split(new[] { '=' }, 2); header[kv[0]] = kv[1]; }
+            else if (mode == 1) map.Add(line);
+            else if (mode == 2 && line.Length > 2) signs.Add(line);
+        }
+        l.title = header["title"];
+        l.requiredCrystals = int.Parse(header["required"]);
+        l.timeLimit = timeLimit;
+        l.music = Sfx("music_" + header["music"]);
+        l.musicVolume = 0.35f;
+        l.map = string.Join("\n", map);
+        l.signs = signs.ToArray();
+    }
+
+    // Палитра — ссылки на префабы и спрайты. Её можно перезаписывать при каждой сборке (это не баланс).
+    static void FillPalette()
+    {
+        var p = dPalette;
+        p.player = pPlayer; p.crystal = pCrystal; p.heart = pHeart; p.torch = pTorch; p.portal = pPortal;
+        p.slime = pSlime; p.bat = pBat; p.goblin = pGoblin; p.boss = pBoss; p.spikes = pSpikes; p.platform = pPlatform;
+        p.rock = pRock.GetComponent<Hazard>();
+        p.topTiles = tTop; p.innerTiles = tInner; p.ledgeTile = tLedge; p.spriteMaterial = spriteMat;
+        p.platformHorizontal = cPlatH; p.platformVertical = cPlatV;
+        p.skull = Spr("Background/Skull"); p.wall = Spr("Background/BG_Wall"); p.arches = Spr("Background/BG_Arches");
+        p.pillar = Spr("Background/Pillar"); p.banner = Spr("Background/Banner"); p.chain = Spr("Background/Chain");
+        p.dust = Spr("Background/Dust"); p.signPlate = Spr("UI/UI_Panel"); p.signFont = font;
+        p.items = dItems; p.rockWarnClip = Sfx("sfx_rumble");
+        EditorUtility.SetDirty(p);
     }
 
     // ------------------------------------------------------------------ PROJECT SETTINGS
