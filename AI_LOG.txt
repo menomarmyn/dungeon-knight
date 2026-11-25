@@ -73,3 +73,27 @@ WHAT I DID MYSELF
   - Reviewed the changes and split them into separate commits (enemy scripts / prefabs and levels / docs)
     in GitHub Desktop from my account, then pushed.
   - Playtest and tuning: see DECISIONS.md (tester tries and the numbers I changed, old -> new).
+
+======================================================================
+WEEK 12 · SOUND PASS
+======================================================================
+See DECISIONS.md (week 12) for the decision log.
+AI produced: GameAudio.cs (rewritten: mixer groups, pool of sources, pitch and clip variation), MusicManager.cs
+(one instance, 1 s crossfade, pause snapshot), AudioPrefs.cs and VolumeSlider.cs (dB, PlayerPrefs), changes in
+PauseMenu, MenuButtons, Health (lose sound), Boss (wind-up sound), Spawner (rumble before rocks), the Settings
+window in the builder, mobile audio import settings, 12 new generated sounds, the sound script map image.
+The AI also created the GameMix AudioMixer in the Unity editor on my laptop (computer control) and rebuilt the game.
+WHAT I DID MYSELF
+Listened to every sound on my phone and laptop and changed: the rock rumble was too loud and masked the boss wind-up, so I lowered it by about 4 dB; the lose sound felt too harsh on phone speakers, so I picked a softer clip and slightly lowered its pitch variation; I shortened the menu music crossfade from 1 s to 0.6 s because it felt sluggish; and I rebalanced music vs. SFX (music −6 dB, SFX 0 dB) after testing with headphones.
+Checked the settings test on the phone: changed the volume, closed the app, opened it again. The slider position and volume were restored correctly via PlayerPrefs; tested mute → unmute and confirmed the pause snapshot still applies while paused, then fixed one case where the slider showed the wrong value after reopening.
+Made the week 12 commits in GitHub Desktop (separate commits for audio scripts, generated sounds, builder/settings changes) and recorded the video: settings window, volume persistence after restart, boss wind-up and rock rumble in gameplay, and the music crossfade between menu and game.
+Additional things I did myself
+Fixed a bug where the source pool ran out during heavy rock spawns (several rumble sounds cut off) — increased the pool size and added a "steal oldest" fallback in GameAudio.
+Noticed the pitch variation on repeated SFX (spawning, hits) sounded "wobbly" when spam-clicked, so I narrowed the pitch range from ±0.15 to ±0.08.
+Tested the game with headphones, phone speaker, and muted — checked that mute fully silences both music and SFX and that the game doesn't crash or leak audio sources when muted.
+Tuned the boss wind-up so it's clearly audible over the music but doesn't clip; added a small delay so it doesn't overlap the rock rumble.
+Verified the mixer groups in the editor: Master → Music / SFX, confirmed the pause snapshot ducks music but not UI sounds, and re-saved the GameMix asset after the AI's edits.
+Re-imported the 12 generated sounds with mobile import settings (Vorbis, load in background, mono for SFX) and checked file sizes — trimmed a few that were unnecessarily long.
+Playtested a full run on the phone: no audio dropouts, no pops/clicks at crossfade or on pause, volume slider responds smoothly across the whole range.
+Updated DECISIONS.md (week 12) with my own notes on the loudness/pitch decisions and the pool-size fix, and added a short note in the sound script map where the map didn't match the final clip assignment.
+Cleaned up: removed unused audio clips from the project, checked that no missing-reference warnings appear in the console on a fresh scene load.
