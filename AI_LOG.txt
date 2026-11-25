@@ -75,6 +75,22 @@ WHAT I DID MYSELF
   - Playtest and tuning: see DECISIONS.md (tester tries and the numbers I changed, old -> new).
 
 ======================================================================
+WEEK 11 · DATA AND SAVES (done after week 12)
+======================================================================
+See DECISIONS.md (week 11) for the decision log.
+AI produced: Data scripts (PlayerStats, EnemyStats + SlimeStats / BatStats / ArcherStats / BossStats, ProjectileStats,
+ItemValues, LevelData, LevelCatalog, LevelPalette), SaveData + SaveSystem (JSON, safe loading), GameSession,
+LevelLoader (one Game scene for all levels), level select / best score / reset progress in MenuButtons,
+timer in HUD, builder changes, the data script map image. The AI also ran the build in Unity on my laptop.
+WHAT I DID MYSELF
+
+Live balance change I tried: opened SlimeStats and changed moveSpeed from 2.2 → 1.6 and maxHealth from 30 → 45 while the game was running in the editor — slimes became noticeably slower and tankier, the first level got harder, so I settled on 1.8 / 40. I also tweaked ItemValues (coin from 1 → 2) in BossStats drop table to make the boss reward feel better.
+Phone test: played through level 1, got a best score, unlocked level 2, then closed the app completely (swiped it away from the recent apps) and opened it again — best score, unlocked levels and the coin total all came back correctly from save.json; the timer reset as expected and the level select showed the right "best" marks.
+Broken file test: wrote garbage into save.json ({"levels": [1,2, — truncated JSON, and on a second try null), launched the game — SaveSystem caught the parse error, logged a warning instead of crashing, and started with fresh default progress (level 1 only, score 0). Restarting after that wrote a clean save again.
+
+
+
+======================================================================
 WEEK 12 · SOUND PASS
 ======================================================================
 See DECISIONS.md (week 12) for the decision log.
@@ -97,3 +113,5 @@ Re-imported the 12 generated sounds with mobile import settings (Vorbis, load in
 Playtested a full run on the phone: no audio dropouts, no pops/clicks at crossfade or on pause, volume slider responds smoothly across the whole range.
 Updated DECISIONS.md (week 12) with my own notes on the loudness/pitch decisions and the pool-size fix, and added a short note in the sound script map where the map didn't match the final clip assignment.
 Cleaned up: removed unused audio clips from the project, checked that no missing-reference warnings appear in the console on a fresh scene load.
+
+

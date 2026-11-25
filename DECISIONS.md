@@ -19,3 +19,11 @@ Decision log: what I asked the AI agent (Claude), what it got wrong, what I chan
 2026-11-24  Every enemy got its own wind-up sound at the start of the wind-up (slime, bat, archer, boss fan attack), and the falling rocks now rumble 0.5 s before they drop. Boss wind-up wait 0.35 s -> 0.45 s so the sound is heard before the orbs fly.
 2026-11-24  Volume: Log10(v) × 20 with slider min 0.0001 (0.5 -> −6 dB), PlayerPrefs, applied once at launch in MusicManager.Start. Test: Music set to −13 dB, Play mode stopped and started again -> still −13 dB.
 2026-11-24  Unity showed "same field name is serialized multiple times: Boss player" — Boss and its base class Enemy both had a private field player. Renamed the Boss field to hero. The first Settings window wrapped "MUSIC" to two lines and "-13 dB" did not fit: label 48 -> 40 px, value 48 -> 34 px.
+
+## Week 11 — Data and saves (done late, after week 12)
+
+2026-11-25  Asked the agent to move all balance numbers into ScriptableObjects. It made one asset per enemy type (Slime, Bat, GoblinArcher, SlimeKing), plus Player, Items and one ProjectileStats per projectile. Scripts now only read stats.xxx; the starting values were copied from the old field defaults so the game plays the same.
+2026-11-25  The builder overwrote everything on each Build Everything. Changed it so data assets are created only if missing and never overwritten, otherwise my Inspector edits would be lost on the next build.
+2026-11-25  Three scenes Level1/2/3 were replaced by one scene Game + LevelLoader that builds any LevelData at runtime (map, crystals to open the portal, time limit, music). Old text maps were imported into Level_01/02/03.asset once.
+2026-11-25  Save: JsonUtility to save.json in persistentDataPath (no BinaryFormatter). Unlocked levels are a List<int>, because JsonUtility skips Dictionary. Broken or missing file -> try/catch -> new SaveData() defaults; the broken file is copied to save.json.broken. Writing goes through a .tmp file so a half-written save cannot replace a good one.
+2026-11-25  Volume moved from PlayerPrefs into save.json (assignment 12 asks for "last week's save system"). Saves happen after a level, when Settings closes, and in OnApplicationPause(true) on the MusicManager, which lives in every scene.

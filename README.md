@@ -32,6 +32,13 @@ All canvases: Canvas Scaler *Scale With Screen Size*, 1920 × 1080, Match = 1; H
 - `Assets/Midterm/Editor/MidtermBuilder.cs` — editor tool that builds the scenes
 - `GDD/Dungeon_Knight_GDD.pdf` — game design document
 
+## Data and saves (week 11)
+- **Balance in data assets** (`Assets/Midterm/Data`): `Player.asset`, `Slime.asset`, `Bat.asset`, `GoblinArcher.asset`, `SlimeKing.asset`, `Items.asset`, `Bullet/Arrow/Orb/Fireball.asset`. Scripts contain no balance numbers — change a value in the Inspector and the game changes.
+- **Levels from data:** `Level_01/02/03.asset` (`LevelData`: title, map, crystals to open the portal, time limit, music, signs). One scene `Game` + `LevelLoader` builds any of them. Order: `Assets/Midterm/Resources/LevelCatalog.asset`.
+- **Save:** `save.json` in `Application.persistentDataPath` (JsonUtility): unlocked and completed levels, best score, music and SFX volume. Missing or broken file → defaults, no crash. Saved after a level, when Settings closes and in `OnApplicationPause(true)`.
+- **Menu:** level select with locked levels, best score, Settings → RESET PROGRESS with a confirm window.
+- Windows: `save.json` is in `%USERPROFILE%\AppData\LocalLow\Student\Dungeon Knight\`.
+
 ## Sound (week 12)
 - **AudioMixer** `Assets/Midterm/Resources/GameMix.mixer`: Master → Music (exposed `MusicVol`) → Tracks; Master → SFX (exposed `SFXVol`); Master → UI. Snapshots **Normal** and **Paused** (Tracks −6 dB + Lowpass Simple 800 Hz).
 - **Music:** menu, level and boss tracks. One `MusicManager` (DontDestroyOnLoad) crossfades between them in 1 s; the same track keeps playing after Restart or Level 1 → Level 2.
