@@ -71,6 +71,7 @@ public static class MidtermBuilder
         {
             Step("Tags & layers", 0.05f); SetupTagsAndLayers();
             Step("Importing sprites", 0.15f); ImportArt();
+            Step("Audio import settings", 0.2f); ConfigureAudioImport();
             Step("Font", 0.25f); MakeFont();
             Step("Tiles", 0.3f); MakeTiles();
             Step("Animations", 0.4f); MakeAnimations();
@@ -589,6 +590,7 @@ public static class MidtermBuilder
         var boss = g.AddComponent<Boss>(); boss.hp = 20; boss.scoreValue = 1000; boss.deathFx = pPoof; boss.hitClip = Sfx("sfx_hit"); boss.dieClip = Sfx("sfx_enemy_die");
         boss.orbPrefab = pOrb.GetComponent<EnemyProjectile>(); boss.fireballPrefab = pFireball.GetComponent<EnemyProjectile>();
         boss.warningPrefab = pWarning; boss.shotClip = Sfx("sfx_boss_shot"); boss.warningClip = Sfx("sfx_warning"); boss.roarClip = Sfx("sfx_boss_roar");
+        boss.windUpClip = Sfx("sfx_windup_boss");
         pBoss = SavePrefab(g, "SlimeKing");
 
         // --- окружение
@@ -631,7 +633,7 @@ public static class MidtermBuilder
         pi.defaultActionMap = "Player";
         pi.notificationBehavior = PlayerNotifications.InvokeCSharpEvents;
         var pl = g.AddComponent<Player2D>(); pl.groundMask = 1 << groundLayer; pl.jumpClip = Sfx("sfx_jump");
-        var hp = g.AddComponent<Health>(); hp.hurtClip = Sfx("sfx_hurt"); hp.healClip = Sfx("sfx_heal"); hp.deathFx = pPoof;
+        var hp = g.AddComponent<Health>(); hp.hurtClip = Sfx("sfx_hurt"); hp.healClip = Sfx("sfx_heal"); hp.loseClip = Sfx("sfx_lose"); hp.deathFx = pPoof;
         var sh = g.AddComponent<Shooter>(); sh.bulletPrefab = pBullet.GetComponent<Bullet>(); sh.shootClip = Sfx("sfx_shoot");
         pPlayer = SavePrefab(g, "Player");
 
@@ -643,7 +645,8 @@ public static class MidtermBuilder
     static void SetupEnemyAI(Enemy e, GameObject g, float alertY)
     {
         e.wallMask = 1 << groundLayer;
-        e.windUpClip = Sfx("sfx_warning");
+        // У каждого типа врага свой звук замаха: игрок слышит атаку раньше, чем видит её.
+        e.windUpClip = Sfx(e is BatEnemy ? "sfx_windup_bat" : e is GoblinArcher ? "sfx_windup_archer" : "sfx_windup_slime");
         var alert = Go("Alert", g.transform); AddSR(alert, Spr("FX/Warning"), 9);
         alert.transform.localPosition = new Vector3(0, alertY, 0); alert.transform.localScale = Vector3.one * 0.6f;
         e.alertIcon = alert;
@@ -830,7 +833,8 @@ public static class MidtermBuilder
     static GameObject MakeSystems()
     {
         var g = Go("GameSystems");
-        g.AddComponent<GameAudio>();
+        var ga = g.AddComponent<GameAudio>();
+        ga.variants = SoundVariants();
         var fader = g.AddComponent<SceneFader>();
         var cv = Go("FaderCanvas", g.transform);
         MakeCanvas(cv, 100);
@@ -1058,6 +1062,7 @@ public static class MidtermBuilder
                         sp.transform.position = cell;
                         sp.prefabs = new Hazard[] { pRock.GetComponent<Hazard>() };
                         sp.firstDelay = 0.5f; sp.interval = 1.1f; sp.halfWidth = 3.5f;
+                        sp.warnClip = Sfx("sfx_rumble"); sp.warnTime = 0.5f;
                         break;
                     }
                     case 'a':
@@ -1153,12 +1158,15 @@ public static class MidtermBuilder
         Txt("Title", safe, "DUNGEON KNIGHT", 96, new Color32(254, 174, 52, 255), new Vector2(0.5f, 1), new Vector2(0, -200), new Vector2(1400, 140)); // 14 букв × 96 = 1344 px — влезает в 4:3 (1440)
         Txt("Subtitle", safe, "RISE OF THE SLIME KING", 40, new Color32(199, 253, 255, 255), new Vector2(0.5f, 1), new Vector2(0, -320), new Vector2(1600, 60));
 
-        var play = MakeButton("PlayButton", safe, "PLAY", Spr("UI/UI_Button"), new Vector2(0, -20), new Vector2(560, 140));
+        var play = MakeButton("PlayButton", safe, "PLAY", Spr("UI/UI_Button"), new Vector2(0, 20), new Vector2(560, 140));
         UnityEventTools.AddPersistentListener(play.onClick, mb.Play);
-        var quit = MakeButton("QuitButton", safe, "QUIT", Spr("UI/UI_ButtonGrey"), new Vector2(0, -190), new Vector2(560, 120));
+        var settings = MakeButton("SettingsButton", safe, "SETTINGS", Spr("UI/UI_ButtonGrey"), new Vector2(0, -130), new Vector2(560, 120));
+        UnityEventTools.AddPersistentListener(settings.onClick, mb.OpenSettings);
+        var quit = MakeButton("QuitButton", safe, "QUIT", Spr("UI/UI_ButtonGrey"), new Vector2(0, -270), new Vector2(560, 120));
         UnityEventTools.AddPersistentListener(quit.onClick, mb.Quit);
 
         Txt("Hint", safe, "COLLECT CRYSTALS - DEFEAT THE KING", 36, new Color32(192, 203, 220, 255), new Vector2(0.5f, 0), new Vector2(0, 70), new Vector2(1800, 60));
+        mb.settingsPanel = MakeSettingsPanel(cv.transform, mb);
 
         EditorSceneManager.SaveScene(scene, ScenesDir + "/MainMenu.unity");
     }
@@ -1220,6 +1228,130 @@ public static class MidtermBuilder
         Txt("Thanks", safe, "THANKS FOR PLAYING!", 36, new Color32(192, 203, 220, 255), new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(1600, 60));
 
         EditorSceneManager.SaveScene(scene, ScenesDir + "/Win.unity");
+    }
+
+    // ------------------------------------------------------------------ SOUND (неделя 12)
+    // Окно Settings: два ползунка громкости (Music, SFX) и кнопка BACK. Как пауза: затемнение + окно в SafeArea.
+    static GameObject MakeSettingsPanel(Transform canvas, MenuButtons mb)
+    {
+        var panel = Img("SettingsPanel", canvas, Spr("FX/WhitePixel"), Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero);
+        Stretch(panel.rectTransform);
+        panel.color = new Color(0.05f, 0.04f, 0.09f, 0.82f);
+        var psafe = UI("SafeArea", panel.transform, Vector2.zero, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+        Stretch(psafe);
+        psafe.gameObject.AddComponent<SafeArea>();
+        var win = Img("Window", psafe, Spr("UI/UI_Panel"), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1100, 760), true);
+        Txt("Title", win.transform, "SETTINGS", 84, new Color32(254, 174, 52, 255), new Vector2(0.5f, 1), new Vector2(0, -105), new Vector2(1000, 110));
+        MakeVolumeSlider(win.transform, "MUSIC", AudioPrefs.Music, new Vector2(0, 110));
+        MakeVolumeSlider(win.transform, "SFX", AudioPrefs.Sfx, new Vector2(0, -60));
+        var back = MakeButton("BackButton", win.transform, "BACK", Spr("UI/UI_Button"), new Vector2(0, -235), new Vector2(520, 130));
+        UnityEventTools.AddPersistentListener(back.onClick, mb.CloseSettings);
+        panel.gameObject.SetActive(false);
+        return panel.gameObject;
+    }
+
+    // Строка: подпись слева, ползунок (ручка 120×120 — под палец), значение в dB справа.
+    static void MakeVolumeSlider(Transform parent, string label, string param, Vector2 pos)
+    {
+        var row = UI(label + "Row", parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), pos, new Vector2(1000, 140));
+        Txt("Label", row, label, 40, Color.white, new Vector2(0, 0.5f), new Vector2(135, 0), new Vector2(260, 80), TextAlignmentOptions.Left, false);
+
+        var sRt = UI("Slider", row, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(30, 0), new Vector2(470, 120));
+        var slider = sRt.gameObject.AddComponent<Slider>();
+        var back = Img("Background", sRt, Spr("UI/UI_BarBack"), new Vector2(0, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero, true);
+        back.pixelsPerUnitMultiplier = 1f;
+        var brt = back.rectTransform; brt.anchorMin = new Vector2(0, 0.5f); brt.anchorMax = new Vector2(1, 0.5f); brt.sizeDelta = new Vector2(0, 48);
+        var area = UI("Fill Area", sRt, Vector2.zero, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+        area.anchorMin = new Vector2(0, 0.5f); area.anchorMax = new Vector2(1, 0.5f); area.sizeDelta = new Vector2(-38, 22);
+        var fill = Img("Fill", area, Spr("UI/UI_BarFill"), Vector2.zero, Vector2.zero, Vector2.zero, Vector2.zero, true);
+        fill.pixelsPerUnitMultiplier = 1f;
+        fill.rectTransform.anchorMin = Vector2.zero; fill.rectTransform.anchorMax = new Vector2(0, 1); fill.rectTransform.sizeDelta = Vector2.zero;
+        var hArea = UI("Handle Slide Area", sRt, Vector2.zero, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+        Stretch(hArea); hArea.offsetMin = new Vector2(40, 0); hArea.offsetMax = new Vector2(-40, 0);
+        var handle = Img("Handle", hArea, Spr("UI/UI_JoyKnob"), new Vector2(0, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(120, 120));
+        handle.rectTransform.anchorMin = new Vector2(0, 0); handle.rectTransform.anchorMax = new Vector2(0, 1); handle.rectTransform.sizeDelta = new Vector2(120, 0);
+        slider.fillRect = fill.rectTransform;
+        slider.handleRect = handle.rectTransform;
+        slider.targetGraphic = handle;
+        slider.direction = Slider.Direction.LeftToRight;
+        slider.minValue = 0.0001f; slider.maxValue = 1f; slider.value = AudioPrefs.Default;
+        var nav = slider.navigation; nav.mode = Navigation.Mode.None; slider.navigation = nav;
+
+        var vs = row.gameObject.AddComponent<VolumeSlider>();
+        vs.param = param;
+        vs.slider = slider;
+        vs.valueText = Txt("Value", row, "0 dB", 34, new Color32(254, 231, 97, 255), new Vector2(1, 0.5f), new Vector2(-115, 0), new Vector2(230, 70), TextAlignmentOptions.Right, false);
+    }
+
+    // Версии звуков: sfx_hit -> sfx_hit_2, sfx_hit_3 (GameAudio выбирает случайную, без повтора подряд).
+    static GameAudio.Variant[] SoundVariants()
+    {
+        var list = new List<GameAudio.Variant>();
+        foreach (string guid in AssetDatabase.FindAssets("t:AudioClip sfx_", new[] { Root + "/Audio" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            string n = Path.GetFileNameWithoutExtension(path);
+            if (Suffix(n) > 0)
+                continue; // Это сама версия (_2, _3).
+            var alts = new List<AudioClip>();
+            for (int i = 2; i <= 3; i++)
+            {
+                var alt = Sfx(n + "_" + i);
+                if (alt != null) alts.Add(alt);
+            }
+            if (alts.Count > 0)
+                list.Add(new GameAudio.Variant { main = Sfx(n), alts = alts.ToArray() });
+        }
+        return list.ToArray();
+    }
+
+    // Импорт для телефона: короткие эффекты — моно, ADPCM, распаковка при загрузке;
+    // музыка — Vorbis и Streaming (читается с диска во время игры, почти не занимает память).
+    static void ConfigureAudioImport()
+    {
+        foreach (string guid in AssetDatabase.FindAssets("t:AudioClip", new[] { Root + "/Audio" }))
+        {
+            string path = AssetDatabase.GUIDToAssetPath(guid);
+            var ai = AssetImporter.GetAtPath(path) as AudioImporter;
+            if (ai == null) continue;
+            bool isMusic = Path.GetFileName(path).StartsWith("music_");
+            var st = ai.defaultSampleSettings;
+            if (isMusic)
+            {
+                ai.forceToMono = false;
+                st.loadType = AudioClipLoadType.Streaming;
+                st.compressionFormat = AudioCompressionFormat.Vorbis;
+                st.quality = 0.6f;
+            }
+            else
+            {
+                ai.forceToMono = true;
+                st.loadType = AudioClipLoadType.DecompressOnLoad;
+                st.compressionFormat = AudioCompressionFormat.ADPCM;
+            }
+            if (ai.defaultSampleSettings.loadType != st.loadType || ai.defaultSampleSettings.compressionFormat != st.compressionFormat
+                || ai.forceToMono != !isMusic)
+            {
+                ai.defaultSampleSettings = st;
+                ai.SaveAndReimport();
+            }
+        }
+    }
+
+    // Проверка микшера: группы, exposed-параметры и snapshots. Пишет в Console, чего не хватает.
+    [MenuItem("Midterm/Check Audio Mixer", priority = 30)]
+    static void CheckMixer()
+    {
+        var mixer = AssetDatabase.LoadAssetAtPath<UnityEngine.Audio.AudioMixer>(Root + "/Resources/GameMix.mixer");
+        if (mixer == null) { Debug.LogError("Нет микшера " + Root + "/Resources/GameMix.mixer"); return; }
+        int bad = 0;
+        foreach (string g in new[] { "Music", "Tracks", "SFX", "UI" })
+            if (!mixer.FindMatchingGroups(g).Any(x => x.name == g)) { Debug.LogError("Нет группы " + g); bad++; }
+        foreach (string p in new[] { AudioPrefs.Music, AudioPrefs.Sfx })
+            if (!mixer.GetFloat(p, out _)) { Debug.LogError("Нет exposed-параметра " + p); bad++; }
+        foreach (string s in new[] { "Normal", "Paused" })
+            if (mixer.FindSnapshot(s) == null) { Debug.LogError("Нет snapshot " + s); bad++; }
+        if (bad == 0) Debug.Log("<color=#7CFC00><b>Микшер GameMix в порядке.</b></color>");
     }
 
     // ------------------------------------------------------------------ PROJECT SETTINGS
