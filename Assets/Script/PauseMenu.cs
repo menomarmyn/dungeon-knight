@@ -30,24 +30,25 @@ public class PauseMenu : MonoBehaviour
         IsPaused = paused;
         pausePanel.SetActive(paused);
         Time.timeScale = paused ? 0f : 1f;
+        MusicManager.SetPaused(paused); // Snapshot: в паузе музыка тише и глуше.
     }
 
     // Кнопки (подключены к Button.onClick).
     public void Pause()
     {
-        GameAudio.Play(clickClip);
+        GameAudio.PlayUI(clickClip);
         SetPaused(true);
     }
 
     public void Resume()
     {
-        GameAudio.Play(clickClip);
+        GameAudio.PlayUI(clickClip);
         SetPaused(false);
     }
 
     public void Restart()
     {
-        GameAudio.Play(clickClip);
+        GameAudio.PlayUI(clickClip);
         pausePanel.SetActive(false);
         GameScore.ResetToLevelStart();
         SceneFader.Load(SceneManager.GetActiveScene().name); // Время вернётся в 1 перед загрузкой.
@@ -55,7 +56,7 @@ public class PauseMenu : MonoBehaviour
 
     public void ToMenu()
     {
-        GameAudio.Play(clickClip);
+        GameAudio.PlayUI(clickClip);
         pausePanel.SetActive(false);
         SceneFader.Load(menuScene);
     }
@@ -65,5 +66,7 @@ public class PauseMenu : MonoBehaviour
         // Если сцена выгружается во время паузы — не оставляем игру замороженной.
         IsPaused = false;
         Time.timeScale = 1f;
+        if (MusicManager.Instance != null)
+            MusicManager.SetPaused(false, 0.5f); // Новая сцена — снова обычный звук.
     }
 }

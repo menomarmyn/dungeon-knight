@@ -22,7 +22,7 @@ public class Boss : Enemy
     public string winScene = "Win";
 
     private int maxHp;
-    private Transform player;
+    private Transform hero; // Своё имя: в базовом Enemy уже есть приватное поле player.
     private Animator anim;
 
     bool Phase2 => hp <= maxHp / 2;
@@ -36,7 +36,7 @@ public class Boss : Enemy
 
     IEnumerator Start()
     {
-        player = GameObject.FindGameObjectWithTag("Player").transform;
+        hero = GameObject.FindGameObjectWithTag("Player").transform;
         if (HUD.Instance != null)
             HUD.Instance.ShowBoss(hp, maxHp);
 
@@ -82,7 +82,7 @@ public class Boss : Enemy
         for (float t = 0f; t < 1f; t += Time.deltaTime / time)
         {
             rb.MovePosition(Vector2.Lerp(start, target, Mathf.SmoothStep(0f, 1f, t)));
-            sr.flipX = player.position.x > transform.position.x;
+            sr.flipX = hero.position.x > transform.position.x;
             yield return null;
         }
         rb.MovePosition(target);
@@ -92,7 +92,8 @@ public class Boss : Enemy
     IEnumerator FanAttack()
     {
         anim.SetTrigger("Attack");
-        yield return new WaitForSeconds(0.35f); // Короткий замах — атаку видно заранее.
+        GameAudio.Play(windUpClip, 0.8f);         // Звук замаха: слышно до того, как полетят сферы.
+        yield return new WaitForSeconds(0.45f);   // Замах: атаку видно и слышно заранее.
 
         int count = Phase2 ? 9 : 5;
         float spread = Phase2 ? 100f : 60f;
@@ -100,7 +101,7 @@ public class Boss : Enemy
 
         for (int w = 0; w < waves; w++)
         {
-            Vector2 toPlayer = (Vector2)player.position + Vector2.up * 0.6f - (Vector2)transform.position;
+            Vector2 toPlayer = (Vector2)hero.position + Vector2.up * 0.6f - (Vector2)transform.position;
             float baseAngle = Mathf.Atan2(toPlayer.y, toPlayer.x) * Mathf.Rad2Deg;
             for (int i = 0; i < count; i++)
             {
@@ -117,7 +118,7 @@ public class Boss : Enemy
     {
         int columns = Phase2 ? 5 : 3;
         float[] xs = new float[columns];
-        xs[0] = player.position.x; // Одна колонна всегда над героем.
+        xs[0] = hero.position.x; // Одна колонна всегда над героем.
         for (int i = 1; i < columns; i++)
             xs[i] = Random.Range(arenaLeft + 1f, arenaRight - 1f);
 

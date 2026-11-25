@@ -8,31 +8,46 @@ public class MenuButtons : MonoBehaviour
     public AudioClip clickClip;
     public AudioClip startClip; // Звук при открытии сцены (например, фанфары победы).
     public TMPro.TextMeshProUGUI scoreText; // На экране победы — итоговый счёт.
+    public GameObject settingsPanel;        // Окно Settings: ползунки Music и SFX.
 
     void Start()
     {
         Time.timeScale = 1f;
-        GameAudio.Play(startClip);
+        GameAudio.Play(startClip, 1f, false); // Мелодию не сдвигаем по pitch.
         if (scoreText != null)
             scoreText.text = "SCORE " + GameScore.Score;
+        if (settingsPanel != null)
+            settingsPanel.SetActive(false);
+    }
+
+    public void OpenSettings()
+    {
+        GameAudio.PlayUI(clickClip);
+        settingsPanel.SetActive(true);
+    }
+
+    public void CloseSettings()
+    {
+        GameAudio.PlayUI(clickClip);
+        settingsPanel.SetActive(false); // VolumeSlider.OnDisable сохраняет громкость.
     }
 
     public void Play()
     {
-        GameAudio.Play(clickClip);
+        GameAudio.PlayUI(clickClip);
         GameScore.ResetAll();
         SceneFader.Load(firstLevel);
     }
 
     public void BackToMenu()
     {
-        GameAudio.Play(clickClip);
+        GameAudio.PlayUI(clickClip);
         SceneFader.Load(menuScene);
     }
 
     public void Quit()
     {
-        GameAudio.Play(clickClip);
+        GameAudio.PlayUI(clickClip);
         Debug.Log("Quit");
         Application.Quit();
 #if UNITY_EDITOR

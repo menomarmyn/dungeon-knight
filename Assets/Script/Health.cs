@@ -10,6 +10,7 @@ public class Health : MonoBehaviour
     public float invincibleTime = 1.2f;
     public AudioClip hurtClip;
     public AudioClip healClip;
+    public AudioClip loseClip;   // Звук поражения (герой погиб).
     public GameObject deathFx;
 
     private bool invincible;
@@ -94,7 +95,7 @@ public class Health : MonoBehaviour
         if (deathFx != null)
             Instantiate(deathFx, transform.position + Vector3.up * 0.6f, Quaternion.identity);
         sr.enabled = false;
-        GameAudio.Play(hurtClip);
+        GameAudio.Play(loseClip, 1f, false);
         GameScore.ResetToLevelStart(); // Очки за неудачную попытку не сохраняются.
         yield return new WaitForSeconds(0.8f);
         // Загружаем текущую сцену заново.
